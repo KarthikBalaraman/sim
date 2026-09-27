@@ -65,6 +65,9 @@
             <p class="text-[11px] text-center text-slate-400">
                 Only specific users on the company whitelist are authorized.
             </p>
+            <p class="text-[10px] text-center text-slate-400">
+                Need to switch accounts? <a href="https://accounts.google.com/Logout" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline font-medium">Sign out of Google</a> first.
+            </p>
         </div>
 
         <!-- Developer Mode Section (if enabled) -->
@@ -187,24 +190,31 @@
             // Show server-side error from redirect mode (e.g. unauthorized account)
             const urlParams = new URLSearchParams(window.location.search);
             const redirectError = urlParams.get('error');
+            const isLoggedOut = urlParams.get('logged_out') === '1' || urlParams.has('logged_out');
+
             if (redirectError) {
                 showAlert('error', 'Sign-In Failed', redirectError);
                 // Clean the URL so refreshing doesn't re-show the error
                 history.replaceState(null, '', '/login');
+            } else if (isLoggedOut) {
+                showAlert('info', 'Signed Out', 'You have been successfully signed out of the simulator.');
+                history.replaceState(null, '', '/login');
             }
 
             try {
-                // If user is already authenticated, immediately redirect to landing page
-                try {
-                    const meRes = await fetch('/api/me');
-                    if (meRes.ok) {
-                        const meData = await meRes.json();
-                        if (meData.authenticated) {
-                            window.top.location.href = window.location.origin + '/';
-                            return;
+                // If user is already authenticated (and did not explicitly log out), redirect to landing page
+                if (!isLoggedOut) {
+                    try {
+                        const meRes = await fetch('/api/me');
+                        if (meRes.ok) {
+                            const meData = await meRes.json();
+                            if (meData.authenticated) {
+                                window.top.location.href = window.location.origin + '/';
+                                return;
+                            }
                         }
-                    }
-                } catch (_) {}
+                    } catch (_) {}
+                }
 
                 const res = await fetch('/api/auth-config');
                 authConfig = await res.json();
@@ -215,12 +225,20 @@
 
                 if (authConfig.clientId) {
                     if (window.google && google.accounts && google.accounts.id) {
+                        // If returning from logout, disable Google auto-select to avoid auto-sign-in dead loops
+                        if (isLoggedOut) {
+                            try {
+                                google.accounts.id.disableAutoSelect();
+                            } catch (_) {}
+                        }
+
                         // Use redirect mode: Google POSTs credential to /auth/google,
                         // server sets cookie + does 302 to /  — no JS navigation needed.
                         google.accounts.id.initialize({
                             client_id: authConfig.clientId,
                             ux_mode: 'redirect',
                             login_uri: window.location.origin + '/auth/google',
+                            auto_select: false,
                             // Popup fallback callback (fires only when popup mode is forced)
                             callback: handleGoogleCredentialResponse
                         });

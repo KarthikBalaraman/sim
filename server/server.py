@@ -144,7 +144,7 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(response_bytes)
 
-    def send_file(self, file_path, content_type='text/html; charset=utf-8', status_code=200):
+    def send_file(self, file_path, content_type='text/html; charset=utf-8', status_code=200, cookies=None):
         if not os.path.exists(file_path):
             self.send_response(404)
             self.end_headers()
@@ -156,6 +156,9 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
         self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(len(content)))
         self.send_header('Cache-Control', 'no-store, must-revalidate')
+        if cookies:
+            for cookie in cookies:
+                self.send_header('Set-Cookie', cookie)
         self.end_headers()
         self.wfile.write(content)
 
@@ -179,16 +182,28 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
 
     def make_cookie_header(self, token, max_age=SESSION_DURATION_SEC):
         # Use SameSite=None only when connection is secure (HTTPS) to support cross-site OAuth redirects.
-        is_https = self.headers.get('X-Forwarded-Proto', '').lower() == 'https'
+        is_https = self.headers.get('X-Forwarded-Proto', '').lower() == 'https' or self.headers.get('X-Forwarded-Ssl', '').lower() == 'on'
         secure_flag = "; Secure" if is_https else ""
         same_site = "None" if is_https else "Lax"
         return f"sim_session={token}; Path=/; HttpOnly; SameSite={same_site}; Max-Age={max_age}{secure_flag}"
 
     def make_clear_cookie_header(self):
-        # Clear cookie using same SameSite logic for consistency.
-        is_https = self.headers.get('X-Forwarded-Proto', '').lower() == 'https'
+        # Clear cookie using same SameSite and Secure logic for consistency.
+        is_https = self.headers.get('X-Forwarded-Proto', '').lower() == 'https' or self.headers.get('X-Forwarded-Ssl', '').lower() == 'on'
+        secure_flag = "; Secure" if is_https else ""
         same_site = "None" if is_https else "Lax"
-        return f"sim_session=; Path=/; HttpOnly; SameSite={same_site}; Max-Age=0"
+        return f"sim_session=; Path=/; HttpOnly; SameSite={same_site}; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT{secure_flag}"
+
+    def make_clear_cookie_headers(self):
+        # Return clear cookie headers for both Lax (standard/HTTP) and None+Secure (HTTPS)
+        # to guarantee removal regardless of transport transition.
+        is_https = self.headers.get('X-Forwarded-Proto', '').lower() == 'https' or self.headers.get('X-Forwarded-Ssl', '').lower() == 'on'
+        headers = [
+            "sim_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+        ]
+        if is_https:
+            headers.append("sim_session=; Path=/; HttpOnly; SameSite=None; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure")
+        return headers
 
     def read_json_body(self):
         content_len = int(self.headers.get('Content-Length', 0))
@@ -264,13 +279,24 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
         # Logout Route
         if path == '/logout':
             self.send_response(302)
-            self.send_header('Location', '/login')
-            self.send_header('Set-Cookie', self.make_clear_cookie_header())
+            self.send_header('Location', '/login?logged_out=1')
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
+            for cookie in self.make_clear_cookie_headers():
+                self.send_header('Set-Cookie', cookie)
             self.end_headers()
             return
 
         # Login Page
         if path == '/login':
+            query_params = urllib.parse.parse_qs(parsed.query)
+            if 'logged_out' in query_params:
+                # User intentionally signed out: suppress auto-redirect and re-assert cookie clearance
+                login_file = get_file_path('login.html', [CLIENT_DIR, PROJECT_ROOT])
+                self.send_file(login_file, cookies=self.make_clear_cookie_headers())
+                return
+
             token = self.get_session_cookie()
             if verify_session_token(token):
                 self.send_response(302)
@@ -422,7 +448,7 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
 
         # Logout API
         if path == '/auth/logout':
-            self.send_json(200, {'success': True}, cookies=[self.make_clear_cookie_header()])
+            self.send_json(200, {'success': True}, cookies=self.make_clear_cookie_headers())
             return
 
         self.send_response(404)

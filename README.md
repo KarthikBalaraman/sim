@@ -82,6 +82,7 @@ DEV_MODE=true
   - If your email is on the whitelist, you are granted access and redirected to the simulator.
   - If your email is not on the whitelist, access is denied (HTTP 403).
 - In Developer Mode (`DEV_MODE=true`), you can test the login flows directly with the "Test as Authorized User" and "Test Unauthorized User" buttons.
+- **Signing Out**: Click **Sign Out** from the user badge to terminate the session. The server clears session cookies using matching transport attributes (`SameSite=None; Secure` on HTTPS) and redirects to `/login?logged_out=1` where Google auto-select is disabled to prevent sign-in loops.
 
 ### 4. Server Configuration (`config/config.json`)
 

@@ -32,7 +32,12 @@ For comprehensive architectural details, formulas, and workflows, always consult
    - Served via `GET /api/config` in `server/server.py`.
    - `client/Simulator.html` loads this on startup with built-in offline fallback.
 
-6. **Mandatory Agent & Documentation Synchronization**:
+6. **Session Cookie Clearance & Signout Integrity**:
+   - `make_clear_cookie_header()` and `make_clear_cookie_headers()` must mirror issuance flags: on HTTPS (`X-Forwarded-Proto: https`), include `; Secure` with `SameSite=None; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`.
+   - `/logout` redirects to `/login?logged_out=1` with `Cache-Control: no-cache, no-store, must-revalidate`.
+   - `/login` suppresses bounce loops when `logged_out` is present and disables GIS auto-select via `google.accounts.id.disableAutoSelect()`.
+
+7. **Mandatory Agent & Documentation Synchronization**:
    - **CRITICAL**: Whenever you make ANY change to this codebase (features, routes, DOM IDs, formulas, config schemas, or UI elements), you MUST synchronously update:
      - [AGENTS.md](file:///c:/Code/simulator/AGENTS.md)
      - [GEMINI.md](file:///c:/Code/simulator/GEMINI.md)

@@ -223,6 +223,36 @@ class TestServerSecurityLogic(unittest.TestCase):
         self.assertIsNotNone(match)
         self.assertEqual(match.group(1), token)
 
+    def test_cookie_clearing_headers_https_and_http(self):
+        import server.server as server
+        class DummyHandler:
+            def __init__(self, headers):
+                self.headers = headers
+            make_cookie_header = server.SimulatorAuthHandler.make_cookie_header
+            make_clear_cookie_header = server.SimulatorAuthHandler.make_clear_cookie_header
+            make_clear_cookie_headers = server.SimulatorAuthHandler.make_clear_cookie_headers
+
+        # Test HTTPS request
+        https_handler = DummyHandler({'X-Forwarded-Proto': 'https'})
+        clear_hdr_https = https_handler.make_clear_cookie_header()
+        self.assertIn('; Secure', clear_hdr_https, "Clear cookie on HTTPS must include '; Secure'")
+        self.assertIn('SameSite=None', clear_hdr_https, "Clear cookie on HTTPS must use SameSite=None")
+        self.assertIn('Max-Age=0', clear_hdr_https)
+        self.assertIn('Expires=', clear_hdr_https)
+
+        https_headers = https_handler.make_clear_cookie_headers()
+        self.assertIsInstance(https_headers, list)
+        self.assertTrue(any('; Secure' in h for h in https_headers))
+
+        # Test HTTP request
+        http_handler = DummyHandler({})
+        clear_hdr_http = http_handler.make_clear_cookie_header()
+        self.assertNotIn('; Secure', clear_hdr_http)
+        self.assertIn('SameSite=Lax', clear_hdr_http)
+        self.assertIn('Max-Age=0', clear_hdr_http)
+        self.assertIn('Expires=', clear_hdr_http)
+
+
 
 class TestAgentDocumentationSync(unittest.TestCase):
     """Ensures all agent guide files exist and contain explicit synchronization rules."""

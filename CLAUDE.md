@@ -23,6 +23,7 @@ Court Booking Revenue Simulator — A dual-currency (INR & AED) unit economics a
 - **Currency formatting**: INR uses `₹` with no space; AED uses `'AED '` with trailing space in labels. Inside inputs, use `.input-prefix` flexbox containers.
 - **Zero-falsy bug prevention**: Always use `isNaN()` checks or `getSafeParam()` when reading input values.
 - **Config-driven**: When updating default parameters or bounds, update `config/config.json`.
+- **Session & Signout Invariant**: Clear cookies with matching transport attributes (`SameSite=None; Secure` on HTTPS, `SameSite=Lax` on HTTP, `Max-Age=0`, `Expires=Thu, 01 Jan 1970 00:00:00 GMT`), redirect to `/login?logged_out=1` with `Cache-Control: no-cache, no-store, must-revalidate`, and invoke `google.accounts.id.disableAutoSelect()`.
 - **Mandatory Documentation & Agent Sync**: Whenever making ANY changes to routes, math, inputs, config keys, or styles, you MUST update all agent instruction files (`AGENTS.md`, `GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.agents/rules/simulator-invariants.md`, and `README.md`) and verify with `test_simulator.py`. Outdated documentation is considered a breaking defect.
 
 

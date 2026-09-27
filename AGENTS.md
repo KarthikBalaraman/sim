@@ -137,6 +137,14 @@ The repository is fully pre-configured for one-click deployment to [Railway](htt
 - **Whitelisting**:
   - Controlled via `ALLOWED_USERS` (comma-separated emails) and `ALLOWED_DOMAINS` in `.env`.
   - Verified on every request; revoking an email in `.env` revokes access immediately.
+- **Logout & Session Termination**:
+  - Navigating to `/logout` clears `sim_session` using identical transport attributes matching issuance:
+    - On HTTPS (`X-Forwarded-Proto: https`): Sends `SameSite=None; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure`.
+    - On HTTP: Sends `SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`.
+    - Both headers are served defensively via `make_clear_cookie_headers()`.
+  - `/logout` redirects to `/login?logged_out=1` with strict `Cache-Control: no-cache, no-store, must-revalidate` headers.
+  - On `/login?logged_out=1`, auto-redirect to `/` is suppressed to prevent bounce loops, clearing headers are re-issued, and `google.accounts.id.disableAutoSelect()` is invoked to prevent GIS auto-sign-in dead loops.
+  - GIS config explicitly sets `auto_select: false`.
 
 ### 4.2. Configuration System (`config.json`)
 Starting parameters and range bounds are defined in `config.json`:
