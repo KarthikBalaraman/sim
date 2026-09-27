@@ -142,10 +142,14 @@
                 const data = await res.json();
                 if (res.ok && data.success) {
                     showAlert('success', 'Access Granted', 'Signed in successfully! Redirecting to simulator...', true);
-                    window.location.replace('/');
-                    setTimeout(() => {
+                    try {
+                        window.top.location.href = window.location.origin + '/';
+                    } catch (_) {
                         window.location.href = '/';
-                    }, 400);
+                    }
+                    setTimeout(() => {
+                        window.location.replace('/');
+                    }, 300);
                 } else {
                     showAlert('error', 'Unauthorized Account', data.error || 'You are not authorized to access this simulator.');
                 }
@@ -166,6 +170,11 @@
                 const data = await res.json();
                 if (res.ok && data.success) {
                     showAlert('success', 'Access Granted', `Welcome ${data.user.name}. Redirecting...`);
+                    try {
+                        window.top.location.href = window.location.origin + '/';
+                    } catch (_) {
+                        window.location.href = '/';
+                    }
                     setTimeout(() => {
                         window.location.replace('/');
                     }, 300);
@@ -179,6 +188,18 @@
 
         async function initAuth() {
             try {
+                // If user is already authenticated, immediately redirect to landing page
+                try {
+                    const meRes = await fetch('/api/me');
+                    if (meRes.ok) {
+                        const meData = await meRes.json();
+                        if (meData.authenticated) {
+                            window.top.location.href = window.location.origin + '/';
+                            return;
+                        }
+                    }
+                } catch (_) {}
+
                 const res = await fetch('/api/auth-config');
                 authConfig = await res.json();
 
