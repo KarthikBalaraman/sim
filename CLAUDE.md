@@ -13,6 +13,7 @@ Court Booking Revenue Simulator — A dual-currency (INR & AED) unit economics a
 - `client/Simulator.html`: Client-side single-page app containing unit economics formulas, Chart.js visualizer, and 36-month projection ledger.
 - `client/login.html`: Login page supporting Google GIS and Dev Mode one-click login.
 - `config/config.json`: Centralized parameter definitions and slider bounds for INR and AED.
+- `railway.json`, `Dockerfile`, `Procfile`, `nixpacks.toml`: Pre-configured Railway / Docker deployment specifications.
 - `tests/test_simulator.py`: Zero-dependency automated test suite.
 - `AGENTS.md`: Full architectural reference document.
 

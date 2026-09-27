@@ -7,6 +7,7 @@ This repository contains the Court Booking Revenue Simulator.
 - Lightweight Python gatekeeper server in `server/server.py` using Python 3 standard library only.
 - Configuration for INR and AED parameters and slider ranges in `config/config.json`.
 - Authentication via Google OAuth (GIS) and dev mode in `client/login.html`.
+- Deployment configuration for Railway via `railway.json`, `Dockerfile`, `Procfile`, and `nixpacks.toml`.
 - Automated verification tests in `tests/test_simulator.py`.
 
 

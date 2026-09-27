@@ -89,15 +89,28 @@ Starting parameters, rates, fees, splits, and slider bounds for **INR** and **AE
 - **Model Levers & Bounds**: Configurable base rate, subscription fee, booking fee, min/max/step ranges, and revenue splits.
 - Changes made in `config/config.json` take effect immediately on page refresh without needing code modifications in HTML.
 
-### 5. Automated Verification & Testing
+### 5. Deploying to Railway
 
-Run the zero-dependency test suite to verify configuration integrity, DOM bindings, and session cryptographic signing:
+The repository is pre-configured with `railway.json`, `Dockerfile`, `Procfile`, and `nixpacks.toml` for seamless deployment to [Railway](https://railway.app):
+
+1. **Connect Repo**: In Railway, create a **New Project** and select **Deploy from GitHub repo**.
+2. **Environment Variables**: Add your production variables in the Railway dashboard:
+   - `SESSION_SECRET`: A secure random cryptographic secret.
+   - `ALLOWED_USERS`: Comma-separated list of authorized Google emails (e.g. `karthik@example.com`).
+   - `ALLOWED_DOMAINS` *(optional)*: Permitted domain(s) (e.g. `yourcompany.com`).
+   - `GOOGLE_CLIENT_ID`: Your Google OAuth 2.0 Web Client ID.
+   - `DEV_MODE`: Set to `false` for production.
+3. **Health Check**: Railway automatically monitors `/api/health` with automatic restart policies.
+
+### 6. Automated Verification & Testing
+
+Run the zero-dependency test suite to verify configuration integrity, DOM bindings, session cryptographic signing, and deployment configs:
 
 ```bash
 python tests/test_simulator.py
 ```
 
-### 6. AI Agent Guidelines & Synchronization
+### 7. AI Agent Guidelines & Synchronization
 
 This repository includes specialized instructions for all major AI coding agents:
 - Universal: `AGENTS.md`

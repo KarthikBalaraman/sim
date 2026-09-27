@@ -7,7 +7,8 @@ You are working on the Court Booking Revenue Simulator, a dual-currency (INR / A
 - `client/Simulator.html`: Main interactive simulator UI, calculation engine, Chart.js graphs, multi-month ledger.
 - `client/login.html`: Google Identity Services (GIS) OAuth & Dev Mode login portal.
 - `config/config.json`: Server-side default parameters, ranges, and slider bounds for INR and AED.
-- `tests/test_simulator.py`: Test suite validating config schema, DOM ID bindings, and session crypto.
+- `railway.json`, `Dockerfile`, `Procfile`, `nixpacks.toml`: Railway and container deployment configuration.
+- `tests/test_simulator.py`: Test suite validating config schema, DOM ID bindings, session crypto, and deploy configs.
 - `AGENTS.md`: Full architectural reference and detailed guidelines.
 
 ## Strict Rules & Invariants

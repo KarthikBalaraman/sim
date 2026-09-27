@@ -1,0 +1,2 @@
+# Court Booking Revenue Simulator
+# Built strictly with Python 3 Standard Library - zero external dependencies required

@@ -236,5 +236,41 @@ class TestAgentDocumentationSync(unittest.TestCase):
             )
 
 
+class TestRailwayDeploymentConfig(unittest.TestCase):
+    """Verifies existence and correctness of Railway and container deployment configuration."""
+
+    def test_railway_files_exist(self):
+        required_files = [
+            'Dockerfile',
+            '.dockerignore',
+            'railway.json',
+            'Procfile',
+            'nixpacks.toml'
+        ]
+        for fname in required_files:
+            fpath = os.path.join(PROJECT_ROOT, fname)
+            self.assertTrue(os.path.exists(fpath), f"Railway deployment file missing: {fname}")
+
+    def test_railway_json_schema(self):
+        fpath = os.path.join(PROJECT_ROOT, 'railway.json')
+        with open(fpath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        self.assertIn('deploy', data)
+        self.assertEqual(data['deploy'].get('healthcheckPath'), '/api/health')
+
+    def test_dockerfile_contents(self):
+        fpath = os.path.join(PROJECT_ROOT, 'Dockerfile')
+        with open(fpath, 'r', encoding='utf-8') as f:
+            content = f.read()
+        self.assertIn('python:3.12-slim', content)
+        self.assertIn('server/server.py', content)
+
+    def test_dockerignore_protects_env(self):
+        fpath = os.path.join(PROJECT_ROOT, '.dockerignore')
+        with open(fpath, 'r', encoding='utf-8') as f:
+            content = f.read()
+        self.assertIn('.env', content)
+
+
 if __name__ == '__main__':
     unittest.main()

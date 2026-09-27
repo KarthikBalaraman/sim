@@ -40,6 +40,13 @@ simulator/
 ├── .env                        # Local environment configuration (ports, secrets, whitelists)
 ├── .env.example                # Example template for environment variables
 ├── .gitignore                  # Git ignore rules (protects .env and cache)
+├── Dockerfile                  # Self-contained container definition for Railway/Docker
+├── .dockerignore               # Protects secrets (.env) and cache from container image
+├── railway.json                # Railway deployment configuration (healthcheck, builder)
+├── Procfile                    # Web process command definition
+├── nixpacks.toml               # Nixpacks build configuration for Railway
+├── requirements.txt            # Zero-dependency standard library indicator
+├── runtime.txt                 # Python 3.12 runtime indicator
 ├── AGENTS.md                   # Universal AI agent guide & development rules
 ├── GEMINI.md                   # Antigravity / Gemini root workspace instructions
 ├── CLAUDE.md                   # Claude Code onboarding guide & quick commands
@@ -54,7 +61,8 @@ simulator/
 | `client/Simulator.html` | Core UI, interactive parameter controls, mathematical calculation engine, Chart.js visualizer, multi-month ledger. | Vanilla HTML5, Vanilla JavaScript, Tailwind CSS (CDN), Chart.js (CDN). |
 | `client/login.html` | Sign-in interface supporting Google Identity Services (GIS) and local Dev Mode one-click login. | Vanilla HTML/JS, Tailwind CSS (CDN). |
 | `config/config.json` | Central configuration file defining starting pipeline parameters, model levers, and slider ranges for INR and AED. | JSON. |
-| `tests/test_simulator.py` | Automated verification test suite for config schema, DOM ID bindings, zero-dependency rules, and session crypto. | Python 3 standard library (`unittest`). |
+| `tests/test_simulator.py` | Automated verification test suite for config schema, DOM ID bindings, zero-dependency rules, session crypto, and Railway deploy config. | Python 3 standard library (`unittest`). |
+| `railway.json` / `Dockerfile` | Railway production deployment configuration, containerization, and health check definitions. | Docker / Nixpacks. |
 
 ---
 
@@ -101,6 +109,18 @@ When `DEV_MODE=true`:
 Built-in graceful fallbacks in `Simulator.html`:
 - If `/api/config` fails, it falls back to built-in default configuration.
 - If `/api/me` fails, it activates a "Standalone Mode" badge and bypasses auth.
+
+### Deploying to Railway
+The repository is fully pre-configured for one-click deployment to [Railway](https://railway.app):
+- **Build Configurations**: Includes both `railway.json` + `Dockerfile` (primary) and `Procfile` + `nixpacks.toml` (Nixpacks fallback).
+- **Zero Configuration Port Binding**: `server.py` dynamically binds to `0.0.0.0:$PORT` provided by Railway.
+- **Healthcheck**: Configured to monitor `/api/health` with automatic failure restarts.
+- **Environment Variables**: Configure the following in Railway's Service Variables:
+  - `SESSION_SECRET`: A long random secret string.
+  - `ALLOWED_USERS`: Comma-separated list of authorized Google emails.
+  - `ALLOWED_DOMAINS` *(optional)*: Permitted email domains (e.g. `yourcompany.com`).
+  - `GOOGLE_CLIENT_ID`: Your Google OAuth 2.0 Web Client ID.
+  - `DEV_MODE`: Set to `false` for production.
 
 ---
 

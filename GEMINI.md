@@ -51,5 +51,6 @@ For comprehensive architectural details, formulas, and workflows, always consult
 - **Run Server**: `python server/server.py` (Default: `http://localhost:8000/`)
 - **Run Tests**: `python tests/test_simulator.py`
 - **Offline / Standalone**: Open `client/Simulator.html` directly in browser (`file://`).
+- **Deploy to Railway**: Pre-configured via `railway.json`, `Dockerfile`, `Procfile`, and `nixpacks.toml`. Dynamic `$PORT` handling and healthchecks at `/api/health`.
 
 

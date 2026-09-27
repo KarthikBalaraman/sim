@@ -29,7 +29,12 @@ globs: ["*.py", "*.html", "*.json", "*.md"]
 - `server/server.py` exposes them at `/api/config`.
 - `client/Simulator.html` fetches this configuration dynamically with embedded fallback.
 
-## 6. Mandatory Agent & Documentation Synchronization
+## 6. Railway & Container Deployment
+- Production deployment is configured via `railway.json`, `Dockerfile`, `Procfile`, and `nixpacks.toml`.
+- Server binds dynamically to `0.0.0.0:$PORT` and serves health checks at `/api/health`.
+- `.dockerignore` must always protect `.env` from inclusion in container images.
+
+## 7. Mandatory Agent & Documentation Synchronization
 - **CRITICAL**: Whenever ANY modifications are made to this codebase (endpoints, calculation logic, UI elements, DOM IDs, configuration keys, or styles), the agent MUST synchronously update:
   - `AGENTS.md`
   - `GEMINI.md`
