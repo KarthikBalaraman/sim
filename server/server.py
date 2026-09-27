@@ -177,12 +177,17 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
         return None
 
     def make_cookie_header(self, token, max_age=SESSION_DURATION_SEC):
+        # Use SameSite=None only when connection is secure (HTTPS) to support cross-site OAuth redirects.
         is_https = self.headers.get('X-Forwarded-Proto', '').lower() == 'https'
         secure_flag = "; Secure" if is_https else ""
-        return f"sim_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age}{secure_flag}"
+        same_site = "None" if is_https else "Lax"
+        return f"sim_session={token}; Path=/; HttpOnly; SameSite={same_site}; Max-Age={max_age}{secure_flag}"
 
     def make_clear_cookie_header(self):
-        return "sim_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
+        # Clear cookie using same SameSite logic for consistency.
+        is_https = self.headers.get('X-Forwarded-Proto', '').lower() == 'https'
+        same_site = "None" if is_https else "Lax"
+        return f"sim_session=; Path=/; HttpOnly; SameSite={same_site}; Max-Age=0"
 
     def read_json_body(self):
         content_len = int(self.headers.get('Content-Length', 0))

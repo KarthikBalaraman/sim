@@ -141,11 +141,11 @@
                 });
 
                 const data = await res.json();
-                if (res.ok && data.success) {
                     showAlert('success', 'Access Granted', 'Signed in! Redirecting...', true);
-                    // Navigate the top-level frame (works even if callback fires inside GIS iframe)
-                    document.location = '/';
-                } else {
+                    // Delay to ensure cookie is stored before navigation
+                    setTimeout(() => {
+                        document.location = '/';
+                    }, 200);
                     showAlert('error', 'Unauthorized Account', data.error || 'You are not authorized to access this simulator.');
                 }
             } catch (err) {
