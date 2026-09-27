@@ -80,7 +80,8 @@ def create_session_token(user_info):
         'picture': user_info.get('picture', ''),
         'exp': int(time.time()) + SESSION_DURATION_SEC
     }
-    payload_b64 = base64.urlsafe_b64encode(json.dumps(payload).encode('utf-8')).decode('utf-8')
+    # Standard JWT-compliant base64url encoding (trailing '=' stripped to prevent cookie-octet delimiter issues)
+    payload_b64 = base64.urlsafe_b64encode(json.dumps(payload).encode('utf-8')).decode('utf-8').rstrip('=')
     sig = hmac.new(SESSION_SECRET, payload_b64.encode('utf-8'), hashlib.sha256).hexdigest()
     return f"{payload_b64}.{sig}"
 
@@ -92,7 +93,13 @@ def verify_session_token(token):
         expected_sig = hmac.new(SESSION_SECRET, payload_b64.encode('utf-8'), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(sig, expected_sig):
             return None
-        payload = json.loads(base64.urlsafe_b64decode(payload_b64.encode('utf-8')).decode('utf-8'))
+        # Restore base64 padding if stripped
+        padding = 4 - (len(payload_b64) % 4)
+        if padding and padding != 4:
+            payload_b64_padded = payload_b64 + ('=' * padding)
+        else:
+            payload_b64_padded = payload_b64
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64_padded.encode('utf-8')).decode('utf-8'))
         if payload.get('exp', 0) < time.time():
             return None  # Expired
         email = payload.get('email', '').lower()
@@ -102,13 +109,22 @@ def verify_session_token(token):
     except Exception:
         return None
 
+def get_allowed_users_and_domains():
+    current_env = load_env(env_file)
+    users_raw = os.environ.get('ALLOWED_USERS', current_env.get('ALLOWED_USERS', ALLOWED_USERS_RAW))
+    users = set(u.strip().lower() for u in users_raw.split(',') if u.strip()) | ALLOWED_USERS
+    domains_raw = os.environ.get('ALLOWED_DOMAINS', current_env.get('ALLOWED_DOMAINS', ALLOWED_DOMAINS_RAW))
+    domains = set(d.strip().lower() for d in domains_raw.split(',') if d.strip()) | ALLOWED_DOMAINS
+    return users, domains
+
 def is_email_authorized(email):
     if not email:
         return False
     email = email.lower().strip()
-    if email in ALLOWED_USERS:
+    users, domains = get_allowed_users_and_domains()
+    if email in users:
         return True
-    for domain in ALLOWED_DOMAINS:
+    for domain in domains:
         if email.endswith(domain if domain.startswith('@') else f"@{domain}"):
             return True
     return False
@@ -146,17 +162,24 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
         cookie_header = self.headers.get('Cookie')
         if not cookie_header:
             return None
-        cookie = SimpleCookie()
+        # 1. Standard SimpleCookie parsing
         try:
+            cookie = SimpleCookie()
             cookie.load(cookie_header)
             if 'sim_session' in cookie:
                 return cookie['sim_session'].value
         except Exception:
-            return None
+            pass
+        # 2. Resilient Regex Fallback (in case SimpleCookie fails on third-party cookies)
+        match = re.search(r'(?:^|;\s*)sim_session=([^;]+)', cookie_header)
+        if match:
+            return urllib.parse.unquote(match.group(1).strip().strip('"'))
         return None
 
     def make_cookie_header(self, token, max_age=SESSION_DURATION_SEC):
-        return f"sim_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age}"
+        is_https = self.headers.get('X-Forwarded-Proto', '').lower() == 'https'
+        secure_flag = "; Secure" if is_https else ""
+        return f"sim_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age}{secure_flag}"
 
     def make_clear_cookie_header(self):
         return "sim_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
@@ -252,6 +275,7 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
             if not user:
                 self.send_response(302)
                 self.send_header('Location', '/login')
+                self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                 self.end_headers()
                 return
             simulator_file = get_file_path('Simulator.html', [CLIENT_DIR, PROJECT_ROOT])
@@ -269,8 +293,22 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
 
         # Google OAuth Token Verification Endpoint
         if path == '/auth/google':
-            body = self.read_json_body()
-            credential = body.get('credential')
+            content_type = self.headers.get('Content-Type', '')
+            credential = None
+            is_form_post = 'application/x-www-form-urlencoded' in content_type
+
+            if 'application/json' in content_type:
+                body = self.read_json_body()
+                credential = body.get('credential')
+            elif is_form_post:
+                content_len = int(self.headers.get('Content-Length', 0))
+                raw_body = self.rfile.read(content_len).decode('utf-8')
+                form_data = urllib.parse.parse_qs(raw_body)
+                credential = form_data.get('credential', [None])[0]
+            else:
+                body = self.read_json_body()
+                credential = body.get('credential')
+
             if not credential:
                 self.send_json(400, {'success': False, 'error': 'Missing credential'})
                 return
@@ -281,29 +319,49 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     token_info = json.loads(resp.read().decode('utf-8'))
 
-                email = token_info.get('email', '').lower()
+                email = token_info.get('email', '').lower().strip()
                 email_verified = token_info.get('email_verified')
 
                 if str(email_verified).lower() not in ('true', '1'):
-                    self.send_json(403, {'success': False, 'error': 'Google account email is not verified.'})
+                    self.send_json(403, {'success': False, 'error': f'Google account email ({email}) is not verified.'})
                     return
 
-                if GOOGLE_CLIENT_ID and token_info.get('aud') != GOOGLE_CLIENT_ID:
+                # Check audience: match aud or azp against configured client ID (dynamic check)
+                active_client_id = os.environ.get('GOOGLE_CLIENT_ID', load_env(env_file).get('GOOGLE_CLIENT_ID', GOOGLE_CLIENT_ID)).strip()
+                aud = token_info.get('aud', '')
+                azp = token_info.get('azp', '')
+                if active_client_id and aud != active_client_id and azp != active_client_id:
+                    print(f"[AUTH ERROR] Client ID mismatch: expected '{active_client_id}', token aud='{aud}', azp='{azp}'")
                     self.send_json(403, {'success': False, 'error': 'Token audience mismatch (Invalid Client ID).'})
                     return
 
                 if not is_email_authorized(email):
+                    allowed_users_set, _ = get_allowed_users_and_domains()
+                    print(f"[AUTH REJECTED] Account {email} is not in ALLOWED_USERS: {allowed_users_set}")
                     self.send_json(403, {
                         'success': False,
-                        'error': f'Access Denied: Account {email} is not authorized to access this simulator. Contact administrator for permission.'
+                        'error': f'Access Denied: Account {email} is not authorized. Please add this email to ALLOWED_USERS in your .env file or Railway variables.'
                     })
                     return
 
-                self.issue_session_and_respond({
+                print(f"[AUTH SUCCESS] Logged in successfully as: {email}")
+                user_info = {
                     'email': email,
                     'name': token_info.get('name', email),
                     'picture': token_info.get('picture', '')
-                })
+                }
+
+                if is_form_post:
+                    token = create_session_token(user_info)
+                    cookie_hdr = self.make_cookie_header(token)
+                    self.send_response(302)
+                    self.send_header('Location', '/')
+                    self.send_header('Set-Cookie', cookie_hdr)
+                    self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                    self.end_headers()
+                    return
+
+                self.issue_session_and_respond(user_info)
                 return
             except urllib.error.HTTPError as e:
                 self.send_json(401, {'success': False, 'error': f'Google token verification failed: {e.reason}'})

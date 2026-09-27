@@ -37,12 +37,17 @@
         </div>
 
         <!-- Alert / Error Banner -->
-        <div id="alertBox" class="hidden p-4 rounded-xl text-xs font-medium space-y-1">
+        <div id="alertBox" class="hidden p-4 rounded-xl text-xs font-medium space-y-2">
             <div class="flex items-center gap-2">
                 <span id="alertIcon" class="w-4 h-4 shrink-0"></span>
                 <span id="alertTitle" class="font-bold"></span>
             </div>
             <p id="alertMessage" class="text-slate-600 pl-6 leading-relaxed"></p>
+            <div id="alertAction" class="hidden pl-6 pt-1">
+                <a href="/" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors">
+                    <span>Enter Simulator &rarr;</span>
+                </a>
+            </div>
         </div>
 
         <!-- Google Sign-In Container -->
@@ -100,20 +105,28 @@
     <script>
         let authConfig = {};
 
-        function showAlert(type, title, message) {
+        function showAlert(type, title, message, showButton = false) {
             const box = document.getElementById('alertBox');
             const titleEl = document.getElementById('alertTitle');
             const msgEl = document.getElementById('alertMessage');
-            box.classList.remove('hidden', 'bg-rose-50', 'text-rose-800', 'border-rose-200', 'bg-emerald-50', 'text-emerald-800', 'border-emerald-200');
+            const actEl = document.getElementById('alertAction');
+            box.classList.remove('hidden', 'bg-rose-50', 'text-rose-800', 'border-rose-200', 'bg-emerald-50', 'text-emerald-800', 'border-emerald-200', 'bg-blue-50', 'text-blue-800', 'border-blue-200');
 
             if (type === 'error') {
                 box.classList.add('bg-rose-50', 'text-rose-800', 'border', 'border-rose-200');
                 titleEl.innerText = title || 'Access Denied';
+            } else if (type === 'info') {
+                box.classList.add('bg-blue-50', 'text-blue-800', 'border', 'border-blue-200');
+                titleEl.innerText = title || 'Verifying...';
             } else {
                 box.classList.add('bg-emerald-50', 'text-emerald-800', 'border', 'border-emerald-200');
                 titleEl.innerText = title || 'Success';
             }
             msgEl.innerText = message;
+            if (actEl) {
+                if (showButton) actEl.classList.remove('hidden');
+                else actEl.classList.add('hidden');
+            }
         }
 
         async function handleGoogleCredentialResponse(response) {
@@ -122,20 +135,22 @@
                 const res = await fetch('/auth/google', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
                     body: JSON.stringify({ credential: response.credential })
                 });
 
                 const data = await res.json();
                 if (res.ok && data.success) {
-                    showAlert('success', 'Access Granted', 'Signed in successfully. Redirecting to simulator...');
+                    showAlert('success', 'Access Granted', 'Signed in successfully! Redirecting to simulator...', true);
+                    window.location.replace('/');
                     setTimeout(() => {
                         window.location.href = '/';
-                    }, 600);
+                    }, 400);
                 } else {
                     showAlert('error', 'Unauthorized Account', data.error || 'You are not authorized to access this simulator.');
                 }
             } catch (err) {
-                showAlert('error', 'Verification Error', 'Network or server error verifying Google token.');
+                showAlert('error', 'Verification Error', 'Network or server error verifying Google token: ' + err.message);
             }
         }
 
@@ -145,14 +160,15 @@
                 const res = await fetch('/auth/dev-login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
                     body: JSON.stringify({ email, name })
                 });
                 const data = await res.json();
                 if (res.ok && data.success) {
                     showAlert('success', 'Access Granted', `Welcome ${data.user.name}. Redirecting...`);
                     setTimeout(() => {
-                        window.location.href = '/';
-                    }, 500);
+                        window.location.replace('/');
+                    }, 300);
                 } else {
                     showAlert('error', 'Access Denied (403)', data.error || 'Account rejected by server whitelist.');
                 }
@@ -174,12 +190,14 @@
                     if (window.google && google.accounts && google.accounts.id) {
                         google.accounts.id.initialize({
                             client_id: authConfig.clientId,
-                            callback: handleGoogleCredentialResponse
+                            callback: handleGoogleCredentialResponse,
+                            itp_support: true,
+                            auto_select: false
                         });
                         document.getElementById('googleBtnPlaceholder').remove();
                         google.accounts.id.renderButton(
                             document.getElementById('googleBtn'),
-                            { theme: 'outline', size: 'large', width: '320', shape: 'pill', text: 'signin_with' }
+                            { theme: 'outline', size: 'large', width: '320', shape: 'pill', text: 'signin_with', logo_alignment: 'left' }
                         );
                         google.accounts.id.prompt();
                     } else {

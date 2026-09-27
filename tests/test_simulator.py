@@ -210,6 +210,19 @@ class TestServerSecurityLogic(unittest.TestCase):
         self.assertTrue(server.is_email_authorized('bob@sub.company.com') or server.is_email_authorized('bob@company.com'))
         self.assertFalse(server.is_email_authorized('hacker@other.com'))
 
+    def test_cookie_unpadding_and_regex_parsing(self):
+        import server.server as server
+        user_info = {'email': 'testuser@company.com', 'name': 'Tester', 'picture': ''}
+        token = server.create_session_token(user_info)
+        b64_part, _ = token.split('.', 1)
+        self.assertFalse(b64_part.endswith('='), "Session token base64 part must strip '=' padding to protect cookie parsers")
+
+        # Test regex parsing
+        cookie_header = f"ga=123; sim_session={token}; other=abc"
+        match = re.search(r'(?:^|;\s*)sim_session=([^;]+)', cookie_header)
+        self.assertIsNotNone(match)
+        self.assertEqual(match.group(1), token)
+
 
 class TestAgentDocumentationSync(unittest.TestCase):
     """Ensures all agent guide files exist and contain explicit synchronization rules."""
