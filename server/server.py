@@ -7,6 +7,7 @@ Zero external dependencies required (uses Python 3 standard library only).
 """
 
 import os
+import re
 import sys
 import json
 import hmac
