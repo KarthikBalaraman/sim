@@ -129,7 +129,6 @@
             }
         }
 
-        // Popup mode fallback (used when redirect mode cannot be used)
         async function handleGoogleCredentialResponse(response) {
             showAlert('info', 'Verifying...', 'Contacting authentication server to verify credentials...');
             try {
@@ -141,11 +140,14 @@
                 });
 
                 const data = await res.json();
-                    showAlert('success', 'Access Granted', 'Signed in! Redirecting...', true);
-                    // Delay to ensure cookie is stored before navigation
-                    setTimeout(() => {
-                        document.location = '/';
-                    }, 200);
+                if (res.ok && data.success) {
+                    // Hide the sign-in UI and show the Enter button.
+                    // User clicks it — a same-domain user gesture — guaranteeing the
+                    // session cookie is accepted before the browser navigates.
+                    document.getElementById('googleAuthSection').classList.add('hidden');
+                    document.getElementById('devModeSection').classList.add('hidden');
+                    showAlert('success', '✓ Access Granted', `Welcome! Click the button below to open the simulator.`, true);
+                } else {
                     showAlert('error', 'Unauthorized Account', data.error || 'You are not authorized to access this simulator.');
                 }
             } catch (err) {
