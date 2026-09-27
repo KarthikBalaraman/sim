@@ -1,5 +1,6 @@
 # Court Booking Revenue Simulator
 
+**Confidential**
 An interactive unit economics, monetization model comparison, and multi-month projections simulator for court booking networks.
 
 ---
