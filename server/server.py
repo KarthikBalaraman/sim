@@ -198,6 +198,13 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
         cookie_hdr = self.make_cookie_header(token)
         self.send_json(200, {'success': True, 'user': user_info}, cookies=[cookie_hdr])
 
+    def redirect_to_login(self, error_msg='Authentication failed.'):
+        encoded = urllib.parse.quote(error_msg, safe='')
+        self.send_response(302)
+        self.send_header('Location', f'/login?error={encoded}')
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.end_headers()
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
@@ -310,6 +317,9 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
                 credential = body.get('credential')
 
             if not credential:
+                if is_form_post:
+                    self.redirect_to_login('Missing credential from Google. Please try again.')
+                    return
                 self.send_json(400, {'success': False, 'error': 'Missing credential'})
                 return
 
@@ -323,7 +333,9 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
                 email_verified = token_info.get('email_verified')
 
                 if str(email_verified).lower() not in ('true', '1'):
-                    self.send_json(403, {'success': False, 'error': f'Google account email ({email}) is not verified.'})
+                    err = f'Google account email ({email}) is not verified.'
+                    if is_form_post: self.redirect_to_login(err); return
+                    self.send_json(403, {'success': False, 'error': err})
                     return
 
                 # Check audience: match aud or azp against configured client ID (dynamic check)
@@ -332,16 +344,17 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
                 azp = token_info.get('azp', '')
                 if active_client_id and aud != active_client_id and azp != active_client_id:
                     print(f"[AUTH ERROR] Client ID mismatch: expected '{active_client_id}', token aud='{aud}', azp='{azp}'")
-                    self.send_json(403, {'success': False, 'error': 'Token audience mismatch (Invalid Client ID).'})
+                    err = 'Token audience mismatch (Invalid Client ID).'
+                    if is_form_post: self.redirect_to_login(err); return
+                    self.send_json(403, {'success': False, 'error': err})
                     return
 
                 if not is_email_authorized(email):
                     allowed_users_set, _ = get_allowed_users_and_domains()
                     print(f"[AUTH REJECTED] Account {email} is not in ALLOWED_USERS: {allowed_users_set}")
-                    self.send_json(403, {
-                        'success': False,
-                        'error': f'Access Denied: Account {email} is not authorized. Please add this email to ALLOWED_USERS in your .env file or Railway variables.'
-                    })
+                    err = f'Access Denied: {email} is not authorized. Contact your administrator.'
+                    if is_form_post: self.redirect_to_login(err); return
+                    self.send_json(403, {'success': False, 'error': err})
                     return
 
                 print(f"[AUTH SUCCESS] Logged in successfully as: {email}")
@@ -364,10 +377,14 @@ class SimulatorAuthHandler(BaseHTTPRequestHandler):
                 self.issue_session_and_respond(user_info)
                 return
             except urllib.error.HTTPError as e:
-                self.send_json(401, {'success': False, 'error': f'Google token verification failed: {e.reason}'})
+                err = f'Google token verification failed: {e.reason}'
+                if is_form_post: self.redirect_to_login(err); return
+                self.send_json(401, {'success': False, 'error': err})
                 return
             except Exception as e:
-                self.send_json(500, {'success': False, 'error': f'Internal verification error: {str(e)}'})
+                err = f'Internal verification error: {str(e)}'
+                if is_form_post: self.redirect_to_login(err); return
+                self.send_json(500, {'success': False, 'error': err})
                 return
 
         # Dev Mode Login Bypass (Only active if DEV_MODE=true)

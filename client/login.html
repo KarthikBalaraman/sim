@@ -129,6 +129,7 @@
             }
         }
 
+        // Popup mode fallback (used when redirect mode cannot be used)
         async function handleGoogleCredentialResponse(response) {
             showAlert('info', 'Verifying...', 'Contacting authentication server to verify credentials...');
             try {
@@ -141,20 +142,14 @@
 
                 const data = await res.json();
                 if (res.ok && data.success) {
-                    showAlert('success', 'Access Granted', 'Signed in successfully! Redirecting to simulator...', true);
-                    try {
-                        window.top.location.href = window.location.origin + '/';
-                    } catch (_) {
-                        window.location.href = '/';
-                    }
-                    setTimeout(() => {
-                        window.location.replace('/');
-                    }, 300);
+                    showAlert('success', 'Access Granted', 'Signed in! Redirecting...', true);
+                    // Navigate the top-level frame (works even if callback fires inside GIS iframe)
+                    document.location = '/';
                 } else {
                     showAlert('error', 'Unauthorized Account', data.error || 'You are not authorized to access this simulator.');
                 }
             } catch (err) {
-                showAlert('error', 'Verification Error', 'Network or server error verifying Google token: ' + err.message);
+                showAlert('error', 'Verification Error', 'Network or server error: ' + err.message);
             }
         }
 
@@ -187,6 +182,15 @@
         }
 
         async function initAuth() {
+            // Show server-side error from redirect mode (e.g. unauthorized account)
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectError = urlParams.get('error');
+            if (redirectError) {
+                showAlert('error', 'Sign-In Failed', redirectError);
+                // Clean the URL so refreshing doesn't re-show the error
+                history.replaceState(null, '', '/login');
+            }
+
             try {
                 // If user is already authenticated, immediately redirect to landing page
                 try {
@@ -209,18 +213,20 @@
 
                 if (authConfig.clientId) {
                     if (window.google && google.accounts && google.accounts.id) {
+                        // Use redirect mode: Google POSTs credential to /auth/google,
+                        // server sets cookie + does 302 to /  — no JS navigation needed.
                         google.accounts.id.initialize({
                             client_id: authConfig.clientId,
-                            callback: handleGoogleCredentialResponse,
-                            itp_support: true,
-                            auto_select: false
+                            ux_mode: 'redirect',
+                            login_uri: window.location.origin + '/auth/google',
+                            // Popup fallback callback (fires only when popup mode is forced)
+                            callback: handleGoogleCredentialResponse
                         });
                         document.getElementById('googleBtnPlaceholder').remove();
                         google.accounts.id.renderButton(
                             document.getElementById('googleBtn'),
                             { theme: 'outline', size: 'large', width: '320', shape: 'pill', text: 'signin_with', logo_alignment: 'left' }
                         );
-                        google.accounts.id.prompt();
                     } else {
                         window.setTimeout(initAuth, 300);
                     }
