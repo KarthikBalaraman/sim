@@ -1,0 +1,85 @@
+{
+  "defaultCurrency": "INR",
+  "currencies": {
+    "INR": {
+      "name": "INR · Indian Rupee (₹)",
+      "symbol": "₹",
+      "pipeline": {
+        "courtsPerVenue": 2,
+        "startingVenues": 10,
+        "venueGrowth": 10,
+        "liaisonCount": 10
+      },
+      "modelA": {
+        "baseRate": 300,
+        "baseRateMin": 50,
+        "baseRateMax": 10000,
+        "baseRateStep": 25,
+        "hoursPerWeek": 12,
+        "grossCommission": 5.0,
+        "gatewayFee": 2.0,
+        "licenseeShare": 50
+      },
+      "modelB": {
+        "subscriptionCost": 200,
+        "subscriptionMin": 100,
+        "subscriptionMax": 2500,
+        "rangeStep": 100,
+        "inputStep": 25,
+        "licenseeShare": 50
+      },
+      "modelC": {
+        "bookingFee": 10,
+        "bookingFeeMin": 5,
+        "bookingFeeMax": 20,
+        "bookingFeeStep": 1,
+        "licenseeShare": 50
+      },
+      "syncSplit": true,
+      "horizon": {
+        "start": 1,
+        "end": 12
+      }
+    },
+    "AED": {
+      "name": "AED · UAE Dirham (AED)",
+      "symbol": "AED ",
+      "pipeline": {
+        "courtsPerVenue": 2,
+        "startingVenues": 5,
+        "venueGrowth": 5,
+        "liaisonCount": 5
+      },
+      "modelA": {
+        "baseRate": 15,
+        "baseRateMin": 5,
+        "baseRateMax": 500,
+        "baseRateStep": 1,
+        "hoursPerWeek": 12,
+        "grossCommission": 5.0,
+        "gatewayFee": 2.0,
+        "licenseeShare": 50
+      },
+      "modelB": {
+        "subscriptionCost": 10,
+        "subscriptionMin": 5,
+        "subscriptionMax": 125,
+        "rangeStep": 5,
+        "inputStep": 5,
+        "licenseeShare": 50
+      },
+      "modelC": {
+        "bookingFee": 1,
+        "bookingFeeMin": 1,
+        "bookingFeeMax": 20,
+        "bookingFeeStep": 1,
+        "licenseeShare": 50
+      },
+      "syncSplit": true,
+      "horizon": {
+        "start": 1,
+        "end": 12
+      }
+    }
+  }
+}

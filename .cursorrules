@@ -1,0 +1,24 @@
+# Cursor Rules for Court Booking Revenue Simulator
+
+You are working on the Court Booking Revenue Simulator, a dual-currency (INR / AED) interactive revenue modeler with a zero-dependency Python 3 HTTP gatekeeper server.
+
+## Project Structure
+- `server/server.py`: Python 3 standard-library-only gatekeeper & static server.
+- `client/Simulator.html`: Main interactive simulator UI, calculation engine, Chart.js graphs, multi-month ledger.
+- `client/login.html`: Google Identity Services (GIS) OAuth & Dev Mode login portal.
+- `config/config.json`: Server-side default parameters, ranges, and slider bounds for INR and AED.
+- `tests/test_simulator.py`: Test suite validating config schema, DOM ID bindings, and session crypto.
+- `AGENTS.md`: Full architectural reference and detailed guidelines.
+
+## Strict Rules & Invariants
+1. **ZERO External Python Dependencies**: Use only Python 3 standard library modules. Never add third-party pip packages or requirements.txt.
+2. **NO Frontend Build Step**: Do not add package.json, npm, Vite, or Webpack. Tailwind and Chart.js are loaded via CDN.
+3. **Currency Spacing Invariant**:
+   - INR: `₹` without space (`₹300`).
+   - AED: `'AED '` with trailing space in text labels (`AED 15`, `AED 200`).
+   - Inputs must use flexbox input groups (`.input-prefix`) to prevent symbol/text overlap.
+4. **Zero-Falsy Protection**: Inputs allow `0`. Always use `isNaN(val) ? default : val` or `getSafeParam()`, never `parseInt(val) || default`.
+5. **Config First**: Always modify default values and ranges in `config/config.json` rather than hardcoding in HTML/JS.
+6. **Mandatory Documentation & Agent Sync**: Whenever you make ANY change to routes, calculations, DOM IDs, config parameters, or UI features, you MUST update all agent instruction files (`AGENTS.md`, `GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.agents/rules/simulator-invariants.md`, and `README.md`) and run/update `test_simulator.py`. Outdated documentation is a breaking defect.
+
+

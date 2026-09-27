@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Court Booking Revenue Simulator — Model Comparison & Projections</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none; height: 6px; border-radius: 9999px; background: #e2e8f0; outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%;
+            background: #ffffff; border: 2px solid #4f46e5; box-shadow: 0 1px 3px rgba(0,0,0,0.15); cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+        .range-purple::-webkit-slider-thumb { border-color: #7c3aed !important; }
+        .range-emerald::-webkit-slider-thumb { border-color: #059669 !important; }
+        .tab-btn-active { background-color: #4f46e5; color: #ffffff; box-shadow: 0 2px 8px rgba(79,70,229,0.25); }
+        .tab-btn-inactive { color: #64748b; background-color: #f1f5f9; }
+        .tab-btn-inactive:hover { color: #0f172a; background-color: #e2e8f0; }
+        .subtab-btn-active { background-color: #ffffff; color: #0f172a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .subtab-btn-inactive { color: #64748b; }
+        .subtab-btn-inactive:hover { color: #0f172a; }
+    </style>
+</head>
+
+<body class="bg-[#f8fafc] text-slate-800 font-sans min-h-screen p-4 sm:p-6 lg:p-8">
+    <div class="max-w-[1600px] mx-auto space-y-6">
+
+        <!-- Top Header & App Bar -->
+        <header class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 mb-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                    Three-Model Unit Economics & Projections Engine
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Court Booking Revenue Simulator</h1>
+                <p class="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl">
+                    Compare Model A (Commission), Model B (Flat Subscription), and Model C (Fixed Booking Fee) across identical venue pipelines.
+                </p>
+            </div>
+
+            <!-- Currency & User Info Controls -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex flex-col items-start gap-1">
+                    <label class="text-[11px] font-semibold text-slate-500" for="currencySelect">Currency</label>
+                    <select id="currencySelect" onchange="changeCurrency(this.value)"
+                        class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                        <option value="INR" selected>INR · Indian Rupee (₹)</option>
+                        <option value="AED">AED · UAE Dirham (AED)</option>
+                    </select>
+                </div>
+
+                <div id="userProfileBadge" class="hidden flex items-center gap-3 pl-3 border-l border-slate-200">
+                    <div class="flex items-center gap-2">
+                        <div id="userAvatar" class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center border border-indigo-200">U</div>
+                        <div class="text-left">
+                            <div id="userName" class="text-xs font-semibold text-slate-900">User</div>
+                            <div id="userEmail" class="text-[10px] text-slate-500">user@example.com</div>
+                        </div>
+                    </div>
+                    <a href="/logout" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors">Sign Out</a>
+                </div>
+
+                <div id="standaloneBadge" class="hidden px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-medium flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Standalone Mode</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Navigation Tabs -->
+        <nav class="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-slate-200/80">
+            <div class="inline-flex p-1.5 bg-slate-100/90 rounded-2xl gap-1">
+                <button id="navTabSnapshot" onclick="switchAppTab('snapshot')" class="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all tab-btn-active flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    Month 1 Snapshot & Unit Economics
+                </button>
+                <button id="navTabProjections" onclick="switchAppTab('projections')" class="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all tab-btn-inactive flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                    Projections & Horizon Simulator (Month X → Y)
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap text-xs">
+                <span class="text-slate-400 font-semibold text-[11px] uppercase tracking-wider">Models:</span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-indigo-600"></span> Model A: Commission
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-purple-900 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-purple-600"></span> Model B: Subscription
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Model C: Booking Fee
+                </span>
+            </div>
+        </nav>
+
+        <!-- ============================================================== -->
+        <!-- TAB 1: MONTH 1 SNAPSHOT & UNIT ECONOMICS                      -->
+        <!-- ============================================================== -->
+        <div id="viewSnapshot" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            <!-- Controls Panel (Left Column) -->
+            <div class="lg:col-span-4 bg-white p-6 rounded-2xl shadow-xs border border-slate-200/80 space-y-6">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900 flex items-center justify-between">
+                        Simulation Parameters
+                        <span class="text-xs font-normal text-slate-400">Month 1 Baseline</span>
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Tune network footprint & monetization levers.</p>
+                </div>
+
+                <!-- 1. Shared Network Pipeline -->
+                <div class="space-y-3.5 pt-1">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs font-bold uppercase tracking-wider text-slate-500">1. Shared Pipeline</div>
+                        <span class="text-[10px] uppercase font-bold tracking-wide px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">Network Engine</span>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-700 mb-1.5">
+                            <span>Avg. Courts per Venue</span>
+                            <span id="courtsPerVenueVal" class="font-bold text-slate-800">2 courts / venue</span>
+                        </div>
+                        <input type="range" id="courtsPerVenue" min="1" max="10" step="0.5" value="2" class="w-full" oninput="calculate()">
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between text-xs font-medium text-slate-700 mb-1.5">
+                            <span>Starting Venues (Per Liaison)</span>
+                            <div class="flex items-center gap-1.5">
+                                <span id="venuesVal" class="font-bold text-slate-800">10 venues</span>
+                                <span id="courtsVal" class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">(20 courts)</span>
+                            </div>
+                        </div>
+                        <input type="range" id="startingVenues" min="0" max="50" step="1" value="10" class="w-full" oninput="calculate()">
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between text-xs font-medium text-slate-700 mb-1.5">
+                            <span>Venues Added / Month</span>
+                            <div class="flex items-center gap-1.5">
+                                <span id="growthVal" class="font-bold text-slate-800">+10 venues/mo</span>
+                                <span id="courtGrowthVal" class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">(+20 courts/mo)</span>
+                            </div>
+                        </div>
+                        <input type="range" id="venueGrowth" min="0" max="25" step="1" value="10" class="w-full" oninput="calculate()">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-700 mb-1.5">
+                            <span>Active Liaisons in Network</span>
+                            <span id="liaisonCountVal" class="font-bold text-slate-800">10 liaisons</span>
+                        </div>
+                        <input type="range" id="liaisonCount" min="1" max="100" step="1" value="10" class="w-full" oninput="calculate()">
+                    </div>
+                </div>
+
+                <!-- 2. Model A: Commission Levers -->
+                <div class="pt-4 border-t border-slate-100 space-y-3.5 bg-indigo-50/40 -mx-6 px-6 py-4 border-y border-indigo-100/60">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-indigo-600"></span> Model A: Commission Levers
+                        </div>
+                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">Turnover %</span>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-700 mb-1.5">
+                            <span>Base Rate per Hour</span>
+                            <span class="font-semibold text-slate-900"><span class="currency-symbol">₹</span><span id="baseRateDisplay">300</span></span>
+                        </div>
+                        <div class="flex items-center rounded-lg border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all overflow-hidden shadow-2xs">
+                            <span class="currency-symbol input-prefix pl-3 pr-1 text-xs font-semibold text-slate-400 select-none pointer-events-none shrink-0">₹</span>
+                            <input type="number" id="baseRate" value="300" min="50" step="25" class="w-full pr-3 py-1.5 text-sm font-medium bg-transparent border-0 focus:outline-none focus:ring-0" oninput="calculate()">
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-700 mb-1.5">
+                            <span>Hours Booked per Week</span>
+                            <span class="font-semibold text-slate-900"><span id="hoursPerWeekDisplay">12</span> hrs/wk</span>
+                        </div>
+                        <input type="number" id="hoursPerWeek" value="12" min="1" max="168" class="w-full px-3 py-1.5 text-sm font-medium border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" oninput="calculate()">
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                            <span>4 weeks / month</span>
+                            <span id="monthlyHoursDisplay">48 hrs / mo per court</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-700 mb-1.5">
+                            <span>Gross Commission</span>
+                            <span id="commissionVal" class="font-bold text-indigo-700">5.0%</span>
+                        </div>
+                        <input type="range" id="grossCommission" min="2" max="15" step="0.5" value="5" class="w-full" oninput="calculate()">
+                        <div class="flex items-center justify-between text-[11px] text-slate-600 mt-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-indigo-100 shadow-2xs">
+                            <span class="text-rose-600 font-medium">Gateway Fee: -2.0%</span>
+                            <span>Platform Net: <strong id="netCommissionText" class="text-indigo-700">3.0%</strong></span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-700 mb-1.5">
+                            <span>Liaison Commission Share</span>
+                            <span id="licenseeShareVal" class="font-bold text-indigo-700">50%</span>
+                        </div>
+                        <input type="range" id="licenseeShare" min="0" max="100" step="5" value="50" class="w-full" oninput="syncShare('licenseeShare')">
+                        <div class="flex items-center justify-between text-[11px] mt-1 text-slate-500">
+                            <span>Liaison: <strong id="subLiaisonShare" class="text-indigo-700">50%</strong></span>
+                            <span>Company: <strong id="companyShareVal" class="text-indigo-700">50%</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Model B: Fixed Subscription Settings -->
+                <div class="pt-4 space-y-3.5 bg-purple-50/50 -mx-6 px-6 py-4 border-y border-purple-200/70">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs font-bold uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-purple-600"></span> Model B: Subscription Levers
+                        </div>
+                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-100 text-purple-800">Fixed Fee</span>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-700 mb-1.5">
+                            <span>Subscription Cost per Court</span>
+                            <span class="font-bold text-purple-700 text-sm"><span class="currency-symbol">₹</span><span id="subCostVal">200</span> / mo</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="range" id="subCost" min="100" max="2500" step="100" value="200" class="w-full range-purple" oninput="syncSubCostInput(this.value); calculate()">
+                            <div class="w-28 shrink-0 flex items-center rounded-md border border-purple-200 bg-white focus-within:ring-2 focus-within:ring-purple-500/20 focus-within:border-purple-500 transition-all overflow-hidden shadow-2xs">
+                                <span class="currency-symbol input-prefix pl-2.5 pr-1 text-xs font-semibold text-slate-400 select-none pointer-events-none shrink-0">₹</span>
+                                <input type="number" id="subCostInput" value="200" min="100" max="2500" step="25" class="w-full pr-2 py-1 text-xs font-semibold bg-transparent border-0 focus:outline-none focus:ring-0" oninput="syncSubCostRange(this.value); calculate()">
+                            </div>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                            <span>Min: <span class="currency-symbol">₹</span><span id="subCostMin">100</span>/mo</span>
+                            <span>Max: <span class="currency-symbol">₹</span><span id="subCostMax">2,500</span>/mo</span>
+                        </div>
+                    </div>
+
+                    <div class="p-2.5 rounded-lg bg-white border border-purple-200/80 text-[11px] text-slate-600 flex items-center justify-between">
+                        <span class="font-semibold text-purple-900">Payment Gateway Fee:</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Paid by Court Owner (0% Take)</span>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-700 mb-1.5">
+                            <span>Liaison Subscription Share</span>
+                            <span id="subLicenseeShareVal" class="font-bold text-purple-700">50%</span>
+                        </div>
+                        <input type="range" id="subLicenseeShare" min="0" max="100" step="5" value="50" class="w-full range-purple" oninput="syncShare('subLicenseeShare')">
+                        <div class="flex items-center justify-between text-[11px] mt-1 text-slate-500">
+                            <span>Liaison: <strong id="subLiaisonSubShare" class="text-purple-700">50%</strong></span>
+                            <span>Company: <strong id="subCompanySubShare" class="text-purple-700">50%</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 pt-1">
+                        <input type="checkbox" id="syncSplit" checked class="w-3.5 h-3.5 rounded text-purple-600 focus:ring-purple-500" onchange="syncShare('licenseeShare')">
+                        <label for="syncSplit" class="text-[11px] text-slate-600 cursor-pointer select-none">Keep liaison split synced across models</label>
+                    </div>
+                </div>
+
+                <!-- 4. Model C: Fixed Platform Booking Fee Settings -->
+                <div class="pt-4 space-y-3.5 bg-emerald-50/40 -mx-6 px-6 py-4 border-y border-emerald-200/70">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Model C: Booking Fee Levers
+                        </div>
+                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Per Booking Slot</span>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-700 mb-1.5">
+                            <span>Platform Booking Fee</span>
+                            <span class="font-bold text-emerald-700 text-sm"><span class="currency-symbol">₹</span><span id="bookingFeeVal">10</span> / booking</span>
+                        </div>
+                        <input type="range" id="bookingFee" min="1" max="20" step="1" value="10" class="w-full range-emerald" oninput="calculate()">
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                            <span>Min: <span class="currency-symbol">₹</span><span id="bookingFeeMin">1</span></span>
+                            <span>Max: <span class="currency-symbol">₹</span><span id="bookingFeeMax">20</span></span>
+                        </div>
+                    </div>
+
+                    <div class="p-2.5 rounded-lg bg-white border border-emerald-200/80 text-[11px] text-slate-600 flex items-center justify-between">
+                        <span class="font-semibold text-emerald-900">Payment Gateway Fee:</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Paid by Court Owner (0% Take)</span>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-700 mb-1.5">
+                            <span>Liaison Booking Fee Share</span>
+                            <span id="bookingLicenseeShareVal" class="font-bold text-emerald-700">50%</span>
+                        </div>
+                        <input type="range" id="bookingLicenseeShare" min="0" max="100" step="5" value="50" class="w-full range-emerald" oninput="syncShare('bookingLicenseeShare')">
+                        <div class="flex items-center justify-between text-[11px] mt-1 text-slate-500">
+                            <span>Liaison: <strong id="bookingLiaisonShare" class="text-emerald-700">50%</strong></span>
+                            <span>Company: <strong id="bookingCompanyShare" class="text-emerald-700">50%</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Month 1 Snapshot & Mathematical Anatomy (Right Column) -->
+            <div class="lg:col-span-8 space-y-6">
+
+                <!-- 1. Month 1 KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Model A Card -->
+                    <div class="bg-white p-5 rounded-2xl border border-indigo-100 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                        <div class="absolute top-0 right-0 w-28 h-28 bg-indigo-100/30 rounded-full blur-2xl pointer-events-none"></div>
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-indigo-700 uppercase tracking-wide">Model A: Commission</span>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100">Month 1</span>
+                            </div>
+                            <div class="mt-3">
+                                <div class="text-xs text-slate-400">Unit Net / Court / Mo</div>
+                                <div class="text-2xl font-bold text-slate-900 mt-0.5"><span class="currency-symbol">₹</span><span id="kpiModelAUnit">432</span></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100 text-xs">
+                                <div>
+                                    <span class="text-slate-400 block text-[11px]">1 Liaison (M1):</span>
+                                    <span class="font-bold text-slate-800 text-sm"><span class="currency-symbol">₹</span><span id="kpiModelALiaisonM1">0</span></span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[11px]">Company (M1):</span>
+                                    <span class="font-bold text-indigo-700 text-sm"><span class="currency-symbol">₹</span><span id="kpiModelACompanyM1">0</span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2.5 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between items-center">
+                            <span>Per Court/Mo Gross GMV:</span>
+                            <span class="font-semibold text-slate-700"><span class="currency-symbol">₹</span><span id="kpiModelAGMV">14,400</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Model B Card -->
+                    <div class="bg-white p-5 rounded-2xl border border-purple-200 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                        <div class="absolute top-0 right-0 w-28 h-28 bg-purple-200/30 rounded-full blur-2xl pointer-events-none"></div>
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-purple-700 uppercase tracking-wide">Model B: Subscription</span>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200">Month 1</span>
+                            </div>
+                            <div class="mt-3">
+                                <div class="text-xs text-slate-400">Unit Net / Court / Mo</div>
+                                <div class="text-2xl font-bold text-purple-950 mt-0.5"><span class="currency-symbol">₹</span><span id="kpiModelBUnit">200</span></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-purple-50 text-xs">
+                                <div>
+                                    <span class="text-slate-400 block text-[11px]">1 Liaison (M1):</span>
+                                    <span class="font-bold text-slate-800 text-sm"><span class="currency-symbol">₹</span><span id="kpiModelBLiaisonM1">2,000</span></span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[11px]">Company (M1):</span>
+                                    <span class="font-bold text-purple-700 text-sm"><span class="currency-symbol">₹</span><span id="kpiModelBCompanyM1">20,000</span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2.5 border-t border-purple-50 text-[11px] text-purple-700/80 flex justify-between items-center">
+                            <span>Fee Type:</span>
+                            <span class="font-semibold text-purple-950">Fixed Flat Recurring</span>
+                        </div>
+                    </div>
+
+                    <!-- Model C Card -->
+                    <div class="bg-white p-5 rounded-2xl border border-emerald-200 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-emerald-700 uppercase tracking-wide">Model C: Booking Fee</span>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200">Month 1</span>
+                            </div>
+                            <div class="mt-3">
+                                <div class="text-xs text-slate-400">Unit Net / Court / Mo</div>
+                                <div class="text-2xl font-bold text-emerald-950 mt-0.5"><span class="currency-symbol">₹</span><span id="kpiModelCUnit">480</span></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-emerald-50 text-xs">
+                                <div>
+                                    <span class="text-slate-400 block text-[11px]">1 Liaison (M1):</span>
+                                    <span class="font-bold text-slate-800 text-sm"><span class="currency-symbol">₹</span><span id="kpiModelCLiaisonM1">0</span></span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[11px]">Company (M1):</span>
+                                    <span class="font-bold text-emerald-700 text-sm"><span class="currency-symbol">₹</span><span id="kpiModelCCompanyM1">0</span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2.5 border-t border-emerald-50 text-[11px] text-emerald-700/80 flex justify-between items-center">
+                            <span>Est. Bookings / Mo:</span>
+                            <span class="font-semibold text-emerald-950" id="kpiModelCBookings">48</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Parameter-to-Revenue Mathematical Anatomy Card -->
+                <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-6 space-y-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100">
+                        <div>
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 mb-1">
+                                Complete Transparency
+                            </div>
+                            <h3 class="text-base font-bold text-slate-900">Month 1 Calculation Anatomy & Parameter Walkthrough</h3>
+                            <p class="text-xs text-slate-500">Read exactly how your selected parameters translate into the Month 1 numbers.</p>
+                        </div>
+                        <div class="inline-flex p-1 bg-slate-100 rounded-xl text-xs font-semibold">
+                            <button id="btnAnatomyA" onclick="switchAnatomyModel('A')" class="px-3 py-1.5 rounded-lg transition-all subtab-btn-active">Model A Walkthrough</button>
+                            <button id="btnAnatomyB" onclick="switchAnatomyModel('B')" class="px-3 py-1.5 rounded-lg transition-all subtab-btn-inactive">Model B Walkthrough</button>
+                            <button id="btnAnatomyC" onclick="switchAnatomyModel('C')" class="px-3 py-1.5 rounded-lg transition-all subtab-btn-inactive">Model C Walkthrough</button>
+                        </div>
+                    </div>
+
+                    <!-- Steps Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" id="anatomyStepsContainer">
+                        <!-- Step 1: Footprint -->
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                            <div class="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                <span>Step 1: Network Footprint</span>
+                                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px]">1</span>
+                            </div>
+                            <div class="text-xs text-slate-600 space-y-1">
+                                <div class="flex justify-between"><span>Starting Venues:</span><strong id="anatVenues">10 venues</strong></div>
+                                <div class="flex justify-between"><span>Avg Courts/Venue:</span><strong id="anatCourtsPerVenue">2 courts</strong></div>
+                                <div class="flex justify-between pt-1 border-t border-slate-200 font-semibold text-slate-800"><span>Courts per Liaison:</span><strong id="anatCourtsPerLiaison">20 courts</strong></div>
+                                <div class="flex justify-between font-semibold text-indigo-700"><span>Total Network Courts (M1):</span><strong id="anatTotalCourts">200 courts</strong></div>
+                            </div>
+                            <p class="text-[10px] text-slate-400 leading-tight pt-1">
+                                <span id="anatLiaisonsCountText">10 liaisons</span> × <span id="anatPerLiaisonCourtsText">20 courts</span> = <strong class="text-slate-700" id="anatCalcFootprint">200 network courts</strong>.
+                            </p>
+                        </div>
+
+                        <!-- Step 2: Utilization -->
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                            <div class="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                <span>Step 2: Utilization</span>
+                                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px]">2</span>
+                            </div>
+                            <div class="text-xs text-slate-600 space-y-1">
+                                <div class="flex justify-between"><span>Weekly Bookings/Court:</span><strong id="anatWeeklyHours">12 hrs/wk</strong></div>
+                                <div class="flex justify-between"><span>Weeks per Month:</span><strong>4 weeks</strong></div>
+                                <div class="flex justify-between pt-1 border-t border-slate-200 font-semibold text-slate-800"><span>Monthly Hours / Court:</span><strong id="anatMonthlyHours">48 hours</strong></div>
+                                <div class="flex justify-between font-semibold text-indigo-700"><span>Total Network Hours:</span><strong id="anatTotalNetworkHours">9,600 hours</strong></div>
+                            </div>
+                            <p class="text-[10px] text-slate-400 leading-tight pt-1">
+                                Assumes 1-hr booking slots = <strong class="text-slate-700" id="anatBookingsCalc">48 bookings/court</strong>.
+                            </p>
+                        </div>
+
+                        <!-- Step 3: Monetization Mechanics -->
+                        <div class="p-4 rounded-xl bg-indigo-50/50 border border-indigo-200/80 space-y-2" id="anatStep3Card">
+                            <div class="flex items-center justify-between text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                                <span id="anatStep3Title">Step 3: Unit Net / Court</span>
+                                <span class="w-5 h-5 rounded-full bg-indigo-200 text-indigo-800 flex items-center justify-center text-[10px]">3</span>
+                            </div>
+                            <div class="text-xs text-slate-600 space-y-1" id="anatStep3Body"></div>
+                            <div class="pt-1.5 border-t border-indigo-200 flex justify-between items-center text-xs font-bold text-indigo-950">
+                                <span>Unit Net / Court:</span>
+                                <span class="text-sm font-extrabold text-indigo-700"><span class="currency-symbol">₹</span><span id="anatUnitNetVal">432</span></span>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Realization & Split -->
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                            <div class="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                <span>Step 4: M1 Realization</span>
+                                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px]">4</span>
+                            </div>
+                            <div class="text-xs text-slate-600 space-y-1">
+                                <div class="flex justify-between"><span>Liaison Split:</span><strong id="anatLiaisonSplit">50%</strong></div>
+                                <div class="flex justify-between"><span>Company Split:</span><strong id="anatCompanySplit">50%</strong></div>
+                                <div class="flex justify-between pt-1 border-t border-slate-200 font-semibold text-slate-800"><span>1 Liaison M1 Payout:</span><strong class="text-slate-900"><span class="currency-symbol">₹</span><span id="anatLiaisonM1Val">4,320</span></strong></div>
+                                <div class="flex justify-between font-bold text-indigo-700"><span>Company M1 Revenue:</span><strong><span class="currency-symbol">₹</span><span id="anatCompanyM1Val">43,200</span></strong></div>
+                            </div>
+                            <p class="text-[10px] text-slate-400 leading-tight pt-1" id="anatRealizationNote">Company earnings</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Month 1 Model Comparison Matrix -->
+                <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-6 space-y-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">Month 1 Model Comparison Matrix</h3>
+                            <p class="text-xs text-slate-500">Benchmark any two models side-by-side to assess instant cash flow and liaison economics.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold text-slate-500">Compare:</span>
+                            <select id="compareModelLeft" onchange="calculate()" class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs focus:ring-2 focus:ring-indigo-500/20">
+                                <option value="B" selected>Model B: Subscription</option>
+                                <option value="A">Model A: Commission</option>
+                                <option value="C">Model C: Booking Fee</option>
+                            </select>
+                            <span class="text-xs font-bold text-slate-400">vs</span>
+                            <select id="compareModelRight" onchange="calculate()" class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs focus:ring-2 focus:ring-indigo-500/20">
+                                <option value="A" selected>Model A: Commission</option>
+                                <option value="B">Model B: Subscription</option>
+                                <option value="C">Model C: Booking Fee</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase tracking-wider text-slate-700" id="cmpLeftTitle">Model B: Subscription</span>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600">Model 1</span>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div class="flex justify-between"><span class="text-slate-500">Unit Net / Court:</span><strong class="text-slate-800"><span class="currency-symbol">₹</span><span id="cmpLeftUnit">200</span></strong></div>
+                                <div class="flex justify-between"><span class="text-slate-500">1 Liaison Take-Home (M1):</span><strong class="text-slate-800"><span class="currency-symbol">₹</span><span id="cmpLeftLiaisonM1">2,000</span></strong></div>
+                                <div class="flex justify-between pt-1 border-t border-slate-200 font-semibold text-slate-900"><span>Company M1 Revenue:</span><strong class="text-indigo-700 text-sm"><span class="currency-symbol">₹</span><span id="cmpLeftCompanyM1">20,000</span></strong></div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase tracking-wider text-slate-700" id="cmpRightTitle">Model A: Commission</span>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600">Model 2</span>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div class="flex justify-between"><span class="text-slate-500">Unit Net / Court:</span><strong class="text-slate-800"><span class="currency-symbol">₹</span><span id="cmpRightUnit">432</span></strong></div>
+                                <div class="flex justify-between"><span class="text-slate-500">1 Liaison Take-Home (M1):</span><strong class="text-slate-800"><span class="currency-symbol">₹</span><span id="cmpRightLiaisonM1">4,320</span></strong></div>
+                                <div class="flex justify-between pt-1 border-t border-slate-200 font-semibold text-slate-900"><span>Company M1 Revenue:</span><strong class="text-indigo-700 text-sm"><span class="currency-symbol">₹</span><span id="cmpRightCompanyM1">43,200</span></strong></div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-teal-50/40 to-white space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase tracking-wider text-emerald-800">Delta Comparison</span>
+                                <span id="cmpDeltaBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-600 text-white shadow-2xs">-54%</span>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div class="flex justify-between"><span class="text-emerald-900">Unit Surplus / Court:</span><strong class="text-emerald-900"><span id="cmpDeltaUnitSign">-</span><span class="currency-symbol">₹</span><span id="cmpDeltaUnit">232</span></strong></div>
+                                <div class="flex justify-between"><span class="text-emerald-900">Liaison M1 Difference:</span><strong class="text-emerald-900"><span id="cmpDeltaLiaisonSign">-</span><span class="currency-symbol">₹</span><span id="cmpDeltaLiaison">2,320</span></strong></div>
+                                <div class="flex justify-between pt-1 border-t border-emerald-200/60 font-semibold text-emerald-950"><span>Company M1 Surplus:</span><strong class="text-emerald-800 text-sm"><span id="cmpDeltaCompanySign">-</span><span class="currency-symbol">₹</span><span id="cmpDeltaCompany">23,200</span></strong></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Break-Even Utilization Callout -->
+                    <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-amber-900">
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span> Commercial Sensitivity & Break-Even Insight
+                            </div>
+                            <p class="text-xs text-amber-950/90 leading-relaxed" id="cmpBreakEvenText">Break-even occupancy details</p>
+                        </div>
+                        <div class="shrink-0 bg-white px-3.5 py-2 rounded-lg border border-amber-200 shadow-2xs text-center">
+                            <span class="text-[10px] uppercase font-bold text-amber-700 block">Break-even Occupancy</span>
+                            <span class="text-base font-black text-amber-950" id="cmpBreakEvenHoursPill">5.6 hrs/wk</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- TAB 2: PROJECTIONS & HORIZON SIMULATOR (MONTH X → Y)          -->
+        <!-- ============================================================== -->
+        <div id="viewProjections" class="hidden space-y-6">
+
+            <!-- Horizon Controls & Milestone Bar -->
+            <div class="bg-white p-6 rounded-2xl shadow-xs border border-slate-200/80 space-y-5">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-slate-100">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 mb-1">
+                            Projection Window (Month X → Y)
+                        </div>
+                        <h2 class="text-lg font-bold text-slate-900">Multi-Month Forecasting & Horizon Simulator</h2>
+                        <p class="text-xs text-slate-500">Select any timeframe to project court network scaling, company run-rate, and cumulative revenue.</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="inline-flex p-1 bg-slate-100 rounded-xl text-xs font-semibold">
+                            <button onclick="setHorizonRange(1, 3)" class="px-2.5 py-1.5 rounded-lg hover:text-slate-900 text-slate-600 transition-colors">3 Mo</button>
+                            <button onclick="setHorizonRange(1, 6)" class="px-2.5 py-1.5 rounded-lg hover:text-slate-900 text-slate-600 transition-colors">6 Mo</button>
+                            <button onclick="setHorizonRange(1, 12)" class="px-2.5 py-1.5 rounded-lg hover:text-slate-900 text-slate-600 transition-colors">12 Mo (1 Yr)</button>
+                            <button onclick="setHorizonRange(1, 24)" class="px-2.5 py-1.5 rounded-lg hover:text-slate-900 text-slate-600 transition-colors">24 Mo (2 Yr)</button>
+                        </div>
+
+                        <div class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-medium">
+                            <label for="horizonStart" class="text-slate-500">From:</label>
+                            <input type="number" id="horizonStart" value="1" min="1" max="35" class="w-14 px-2 py-1 bg-white border border-slate-200 rounded-md text-center font-bold text-slate-800" onchange="handleHorizonChange()">
+                            <label for="horizonEnd" class="text-slate-500">To:</label>
+                            <input type="number" id="horizonEnd" value="12" min="2" max="36" class="w-14 px-2 py-1 bg-white border border-slate-200 rounded-md text-center font-bold text-slate-800" onchange="handleHorizonChange()">
+                            <span class="text-slate-400">Months</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Horizon Summary Milestones -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <span class="text-slate-500 block">Footprint at End of Horizon:</span>
+                        <div class="font-extrabold text-slate-900 text-base mt-1" id="projEndingFootprint">120 venues</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5" id="projEndingNetworkTotal">2,400 total network courts</div>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-indigo-50/60 border border-indigo-100">
+                        <span class="text-indigo-800/80 block">Model A Period Company Total:</span>
+                        <div class="font-extrabold text-indigo-900 text-base mt-1"><span class="currency-symbol">₹</span><span id="projTotalModelA">0</span></div>
+                        <div class="text-[11px] text-indigo-600 mt-0.5">Ending Run-Rate: <span class="currency-symbol">₹</span><span id="projRunRateModelA">0</span>/mo</div>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-purple-50/60 border border-purple-100">
+                        <span class="text-purple-800/80 block">Model B Period Company Total:</span>
+                        <div class="font-extrabold text-purple-900 text-base mt-1"><span class="currency-symbol">₹</span><span id="projTotalModelB">0</span></div>
+                        <div class="text-[11px] text-purple-600 mt-0.5">Ending Run-Rate: <span class="currency-symbol">₹</span><span id="projRunRateModelB">0</span>/mo</div>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-emerald-50/60 border border-emerald-100">
+                        <span class="text-emerald-800/80 block">Model C Period Company Total:</span>
+                        <div class="font-extrabold text-emerald-900 text-base mt-1"><span class="currency-symbol">₹</span><span id="projTotalModelC">0</span></div>
+                        <div class="text-[11px] text-emerald-600 mt-0.5">Ending Run-Rate: <span class="currency-symbol">₹</span><span id="projRunRateModelC">0</span>/mo</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Projection Chart Card -->
+            <div class="bg-white p-6 rounded-2xl shadow-xs border border-slate-200/80 flex flex-col space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-100 gap-3">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Side-by-Side Trajectory Comparison</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            Trajectory from <span id="chartRangeSubtitle" class="font-semibold text-slate-700">Month 1 to Month 12</span> across identical pipeline growth.
+                        </p>
+                    </div>
+
+                    <div class="inline-flex p-1 bg-slate-100 rounded-xl text-xs font-semibold">
+                        <button id="tabCompany" onclick="switchChartTab('company')" class="px-3 py-1.5 rounded-lg transition-all subtab-btn-active">Company Revenue</button>
+                        <button id="tabLiaison" onclick="switchChartTab('liaison')" class="px-3 py-1.5 rounded-lg transition-all subtab-btn-inactive">1 Liaison Take-Home</button>
+                        <button id="tabCombined" onclick="switchChartTab('combined')" class="px-3 py-1.5 rounded-lg transition-all subtab-btn-inactive">All Series Combined</button>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-4 text-xs text-slate-700">
+                    <span class="font-semibold text-slate-500">Models shown:</span>
+                    <label class="inline-flex items-center gap-1.5 font-medium cursor-pointer">
+                        <input type="checkbox" class="compare-model accent-indigo-600" value="A" checked onchange="calculate()"> Model A: Commission
+                    </label>
+                    <label class="inline-flex items-center gap-1.5 font-medium cursor-pointer">
+                        <input type="checkbox" class="compare-model accent-purple-600" value="B" checked onchange="calculate()"> Model B: Subscription
+                    </label>
+                    <label class="inline-flex items-center gap-1.5 font-medium cursor-pointer">
+                        <input type="checkbox" class="compare-model accent-emerald-600" value="C" checked onchange="calculate()"> Model C: Booking Fee
+                    </label>
+                </div>
+
+                <div id="chartLegendContainer" class="flex flex-wrap items-center gap-4 text-xs font-medium pt-1"></div>
+
+                <div class="relative h-96 w-full">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Multi-Month Comparison Ledger Table -->
+            <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900">Period Ledger & Breakdown</h3>
+                        <p class="text-xs text-slate-500">Monthly breakdown for active models across the selected horizon</p>
+                    </div>
+                    <button onclick="toggleLedger()" id="ledgerToggleBtn" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">Hide Table</button>
+                </div>
+
+                <div id="ledgerTableContainer" class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-50/80 border-b border-slate-100 text-slate-500 font-semibold">
+                                <th class="py-2.5 px-4">Month</th>
+                                <th class="py-2.5 px-3">Network Courts</th>
+                                <th class="py-2.5 px-3 text-indigo-800">Model A Co.</th>
+                                <th class="py-2.5 px-3 text-purple-800">Model B Co.</th>
+                                <th class="py-2.5 px-3 text-emerald-700">Model C Co.</th>
+                                <th class="py-2.5 px-3 text-slate-600">Co. Delta (B - A)</th>
+                                <th class="py-2.5 px-3 text-indigo-800">Model A Liaison</th>
+                                <th class="py-2.5 px-3 text-purple-800">Model B Liaison</th>
+                                <th class="py-2.5 px-3 text-emerald-700">Model C Liaison</th>
+                                <th class="py-2.5 px-4 text-emerald-700">Liaison Delta</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ledgerTableBody" class="divide-y divide-slate-100 text-slate-700 font-medium"></tbody>
+                        <tfoot id="ledgerTableFoot" class="bg-slate-50 font-bold text-slate-900 border-t-2 border-slate-200"></tfoot>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Application Simulation Engine Logic (DRY & Modular) -->
+    <script>
+        // DOM Utility Helpers
+        const $ = id => document.getElementById(id);
+        const setText = (id, txt) => { const el = $(id); if (el) el.innerText = txt; };
+        const setVal = (id, val) => { const el = $(id); if (el && val !== undefined) el.value = val; };
+
+        // Unified Simulation Parameters Schema (DRY Single-Source of Truth)
+        const SIM_PARAMS = [
+            { id: 'courtsPerVenue', type: 'float', def: 2 },
+            { id: 'startingVenues', type: 'int', def: 10 },
+            { id: 'venueGrowth', type: 'int', def: 10 },
+            { id: 'liaisonCount', type: 'int', def: 10 },
+            { id: 'baseRate', type: 'float', def: 300 },
+            { id: 'hoursPerWeek', type: 'float', def: 12 },
+            { id: 'grossCommission', type: 'float', def: 5.0 },
+            { id: 'licenseeShare', type: 'float', def: 50 },
+            { id: 'subCost', type: 'float', def: 200, sync: 'subCostInput' },
+            { id: 'subLicenseeShare', type: 'float', def: 50 },
+            { id: 'bookingFee', type: 'float', def: 10 },
+            { id: 'bookingLicenseeShare', type: 'float', def: 50 },
+            { id: 'syncSplit', type: 'bool', def: true }
+        ];
+
+        function getSafeParam(param) {
+            const el = $(param.id);
+            if (!el) return param.def;
+            if (param.type === 'bool') return el.checked;
+            const v = param.type === 'int' ? parseInt(el.value) : parseFloat(el.value);
+            return isNaN(v) ? param.def : v;
+        }
+
+        let revenueChart;
+        let currentAppTab = 'snapshot';
+        let currentChartTab = 'company';
+        let currentAnatomyModel = 'A';
+        let activeCurrency = 'INR';
+        let horizonStart = 1;
+        let horizonEnd = 12;
+        let currencyState = {};
+
+        // Default Config Fallback
+        let serverConfig = {
+            defaultCurrency: 'INR',
+            currencies: {
+                INR: {
+                    name: 'INR · Indian Rupee (₹)', symbol: '₹',
+                    pipeline: { courtsPerVenue: 2, startingVenues: 10, venueGrowth: 10, liaisonCount: 10 },
+                    modelA: { baseRate: 300, baseRateMin: 50, baseRateMax: 10000, baseRateStep: 25, hoursPerWeek: 12, grossCommission: 5.0, gatewayFee: 2.0, licenseeShare: 50 },
+                    modelB: { subscriptionCost: 200, subscriptionMin: 100, subscriptionMax: 2500, rangeStep: 100, inputStep: 25, licenseeShare: 50 },
+                    modelC: { bookingFee: 10, bookingFeeMin: 5, bookingFeeMax: 20, bookingFeeStep: 1, licenseeShare: 50 },
+                    syncSplit: true, horizon: { start: 1, end: 12 }
+                },
+                AED: {
+                    name: 'AED · UAE Dirham (AED)', symbol: 'AED ',
+                    pipeline: { courtsPerVenue: 2, startingVenues: 5, venueGrowth: 5, liaisonCount: 5 },
+                    modelA: { baseRate: 15, baseRateMin: 5, baseRateMax: 500, baseRateStep: 1, hoursPerWeek: 12, grossCommission: 5.0, gatewayFee: 2.0, licenseeShare: 50 },
+                    modelB: { subscriptionCost: 10, subscriptionMin: 5, subscriptionMax: 125, rangeStep: 5, inputStep: 5, licenseeShare: 50 },
+                    modelC: { bookingFee: 1, bookingFeeMin: 1, bookingFeeMax: 20, bookingFeeStep: 1, licenseeShare: 50 },
+                    syncSplit: true, horizon: { start: 1, end: 12 }
+                }
+            }
+        };
+
+        // Currency & Formatting Helpers
+        const currencySymbol = () => serverConfig.currencies?.[activeCurrency]?.symbol || (activeCurrency === 'AED' ? 'AED ' : '₹');
+        const formatCurrency = num => Math.round(num).toLocaleString(activeCurrency === 'AED' ? 'en-AE' : 'en-IN');
+        const formatCount = val => (val % 1 === 0) ? val.toString() : val.toFixed(1);
+
+        function updateCurrencySymbols() {
+            const sym = currencySymbol();
+            document.querySelectorAll('.currency-symbol').forEach(el => {
+                el.textContent = el.classList.contains('input-prefix') ? sym.trim() : sym;
+            });
+        }
+
+        // DRY State Management
+        function initCurrencyState() {
+            currencyState = {};
+            for (const code in serverConfig.currencies) {
+                const c = serverConfig.currencies[code];
+                currencyState[code] = {
+                    courtsPerVenue: c.pipeline?.courtsPerVenue ?? 2,
+                    startingVenues: c.pipeline?.startingVenues ?? 10,
+                    venueGrowth: c.pipeline?.venueGrowth ?? 10,
+                    liaisonCount: c.pipeline?.liaisonCount ?? 10,
+                    baseRate: c.modelA?.baseRate ?? 300,
+                    hoursPerWeek: c.modelA?.hoursPerWeek ?? 12,
+                    grossCommission: c.modelA?.grossCommission ?? 5.0,
+                    licenseeShare: c.modelA?.licenseeShare ?? 50,
+                    subCost: c.modelB?.subscriptionCost ?? 200,
+                    subLicenseeShare: c.modelB?.licenseeShare ?? 50,
+                    bookingFee: c.modelC?.bookingFee ?? 10,
+                    bookingLicenseeShare: c.modelC?.licenseeShare ?? 50,
+                    syncSplit: c.syncSplit ?? true
+                };
+            }
+        }
+
+        function saveCurrentInputsToState() {
+            if (!activeCurrency) return;
+            currencyState[activeCurrency] = Object.fromEntries(SIM_PARAMS.map(p => [p.id, getSafeParam(p)]));
+        }
+
+        function applyCurrencyConfig(code) {
+            activeCurrency = code;
+            const curConfig = serverConfig.currencies[code] || serverConfig.currencies.INR;
+            const state = currencyState[code] || {};
+
+            if ($('currencySelect') && $('currencySelect').value !== code) $('currencySelect').value = code;
+
+            // Apply parameters from cached state or defaults
+            SIM_PARAMS.forEach(p => {
+                const val = state[p.id] !== undefined ? state[p.id] : p.def;
+                const el = $(p.id);
+                if (!el) return;
+                if (p.type === 'bool') el.checked = val;
+                else el.value = val;
+                if (p.sync && $(p.sync)) $(p.sync).value = val;
+            });
+
+            // Apply Currency-Specific Bounds
+            if (curConfig.modelA) {
+                const b = $('baseRate');
+                b.min = curConfig.modelA.baseRateMin; b.max = curConfig.modelA.baseRateMax; b.step = curConfig.modelA.baseRateStep;
+            }
+            if (curConfig.modelB) {
+                [$('subCost'), $('subCostInput')].forEach(el => { el.min = curConfig.modelB.subscriptionMin; el.max = curConfig.modelB.subscriptionMax; });
+                $('subCost').step = curConfig.modelB.rangeStep;
+                $('subCostInput').step = curConfig.modelB.inputStep;
+                setText('subCostMin', formatCurrency(curConfig.modelB.subscriptionMin));
+                setText('subCostMax', formatCurrency(curConfig.modelB.subscriptionMax));
+            }
+            if (curConfig.modelC) {
+                const f = $('bookingFee');
+                f.min = curConfig.modelC.bookingFeeMin; f.max = curConfig.modelC.bookingFeeMax; f.step = curConfig.modelC.bookingFeeStep;
+                setText('bookingFeeMin', formatCurrency(curConfig.modelC.bookingFeeMin));
+                setText('bookingFeeMax', formatCurrency(curConfig.modelC.bookingFeeMax));
+            }
+
+            updateCurrencySymbols();
+            calculate();
+        }
+
+        function changeCurrency(currency) {
+            if (currency === activeCurrency) return;
+            saveCurrentInputsToState();
+            applyCurrencyConfig(currency);
+        }
+
+        // Companion Input Synchronization
+        function syncSubCostInput(val) { setVal('subCostInput', val); }
+        function syncSubCostRange(val) {
+            const b = serverConfig.currencies[activeCurrency]?.modelB || {};
+            const min = b.subscriptionMin || 5, max = b.subscriptionMax || 2500;
+            setVal('subCost', Math.max(min, Math.min(max, parseFloat(val) || min)));
+        }
+
+        // Shared Split Synchronization (DRY)
+        function syncShare(sourceId) {
+            if ($('syncSplit').checked) {
+                const val = $(sourceId).value;
+                ['licenseeShare', 'subLicenseeShare', 'bookingLicenseeShare'].forEach(id => {
+                    if (id !== sourceId) setVal(id, val);
+                });
+            }
+            calculate();
+        }
+
+        // Navigation & Tab Switching
+        function switchAppTab(tab) {
+            currentAppTab = tab;
+            const isSnap = tab === 'snapshot';
+            $('navTabSnapshot').className = `px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 ${isSnap ? 'tab-btn-active' : 'tab-btn-inactive'}`;
+            $('navTabProjections').className = `px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 ${!isSnap ? 'tab-btn-active' : 'tab-btn-inactive'}`;
+            $('viewSnapshot').classList.toggle('hidden', !isSnap);
+            $('viewProjections').classList.toggle('hidden', isSnap);
+            if (!isSnap && revenueChart) setTimeout(() => revenueChart.resize(), 50);
+            calculate();
+        }
+
+        function switchAnatomyModel(model) {
+            currentAnatomyModel = model;
+            ['A', 'B', 'C'].forEach(m => {
+                $('btnAnatomy' + m).className = `px-3 py-1.5 rounded-lg transition-all ${m === model ? 'subtab-btn-active' : 'subtab-btn-inactive'}`;
+            });
+            calculate();
+        }
+
+        function switchChartTab(tab) {
+            currentChartTab = tab;
+            ['company', 'liaison', 'combined'].forEach(t => {
+                const btn = $('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (btn) btn.className = `px-3 py-1.5 rounded-lg transition-all ${t === tab ? 'subtab-btn-active' : 'subtab-btn-inactive'}`;
+            });
+            calculate();
+        }
+
+        function setHorizonRange(start, end) {
+            horizonStart = start; horizonEnd = end;
+            setVal('horizonStart', start); setVal('horizonEnd', end);
+            calculate();
+        }
+
+        function handleHorizonChange() {
+            let start = Math.max(1, Math.min(parseInt($('horizonStart').value) || 1, 35));
+            let end = Math.max(start + 1, Math.min(parseInt($('horizonEnd').value) || 12, 36));
+            setHorizonRange(start, end);
+        }
+
+        function toggleLedger() {
+            const c = $('ledgerTableContainer');
+            c.classList.toggle('hidden');
+            setText('ledgerToggleBtn', c.classList.contains('hidden') ? 'Show Table' : 'Hide Table');
+        }
+
+        // ==============================================================
+        // MAIN SIMULATION CALCULATION ENGINE
+        // ==============================================================
+        function calculate() {
+            // Read Inputs Safely (Zero-Falsy Protected)
+            const courtsPerVenue = getSafeParam({ id: 'courtsPerVenue', type: 'float', def: 2 });
+            const startingVenues = getSafeParam({ id: 'startingVenues', type: 'int', def: 10 });
+            const venueGrowth = getSafeParam({ id: 'venueGrowth', type: 'int', def: 10 });
+            const liaisonCount = getSafeParam({ id: 'liaisonCount', type: 'int', def: 10 });
+
+            const baseRate = getSafeParam({ id: 'baseRate', type: 'float', def: 300 });
+            const hoursPerWeek = getSafeParam({ id: 'hoursPerWeek', type: 'float', def: 12 });
+            const grossCommission = getSafeParam({ id: 'grossCommission', type: 'float', def: 5.0 });
+            const netCommissionPercent = Math.max(0, grossCommission - 2); // 2% gateway fee
+
+            const shareA = getSafeParam({ id: 'licenseeShare', type: 'float', def: 50 });
+            const subCost = getSafeParam({ id: 'subCost', type: 'float', def: 200 });
+            const shareB = getSafeParam({ id: 'subLicenseeShare', type: 'float', def: 50 });
+            const bookingFee = getSafeParam({ id: 'bookingFee', type: 'float', def: 10 });
+            const shareC = getSafeParam({ id: 'bookingLicenseeShare', type: 'float', def: 50 });
+
+            // Display Labels Sync
+            setText('courtsPerVenueVal', `${formatCount(courtsPerVenue)} courts / venue`);
+            setText('venuesVal', `${startingVenues} ${startingVenues === 1 ? 'venue' : 'venues'}`);
+            setText('courtsVal', `(${formatCount(startingVenues * courtsPerVenue)} courts)`);
+            setText('growthVal', `+${venueGrowth} ${venueGrowth === 1 ? 'venue' : 'venues'}/mo`);
+            setText('courtGrowthVal', `(+${formatCount(venueGrowth * courtsPerVenue)} courts/mo)`);
+            setText('liaisonCountVal', `${liaisonCount} ${liaisonCount === 1 ? 'liaison' : 'liaisons'}`);
+
+            const monthlyHoursPerCourt = hoursPerWeek * 4;
+            const gmvPerCourtMonth = baseRate * monthlyHoursPerCourt;
+
+            setText('baseRateDisplay', baseRate);
+            setText('hoursPerWeekDisplay', hoursPerWeek);
+            setText('monthlyHoursDisplay', `${monthlyHoursPerCourt} hrs / mo per court`);
+            setText('commissionVal', `${grossCommission.toFixed(1)}%`);
+            setText('netCommissionText', `${netCommissionPercent.toFixed(1)}%`);
+
+            setText('licenseeShareVal', `${shareA}%`);
+            setText('subLiaisonShare', `${shareA}%`);
+            setText('companyShareVal', `${100 - shareA}%`);
+
+            setText('subCostVal', formatCurrency(subCost));
+            setVal('subCostInput', subCost);
+            setText('subLicenseeShareVal', `${shareB}%`);
+            setText('subLiaisonSubShare', `${shareB}%`);
+            setText('subCompanySubShare', `${100 - shareB}%`);
+
+            setText('bookingFeeVal', bookingFee);
+            setText('bookingLicenseeShareVal', `${shareC}%`);
+            setText('bookingLiaisonShare', `${shareC}%`);
+            setText('bookingCompanyShare', `${100 - shareC}%`);
+
+            // Unit Economics & Model Definitions (DRY Model Map)
+            const m1CourtsPerLiaison = startingVenues * courtsPerVenue;
+            const m1TotalNetworkCourts = m1CourtsPerLiaison * liaisonCount;
+
+            const models = {
+                A: {
+                    name: 'Model A: Commission',
+                    unitNet: gmvPerCourtMonth * (netCommissionPercent / 100),
+                    liaisonShare: shareA,
+                    companyShare: 100 - shareA
+                },
+                B: {
+                    name: 'Model B: Subscription',
+                    unitNet: subCost,
+                    liaisonShare: shareB,
+                    companyShare: 100 - shareB
+                },
+                C: {
+                    name: 'Model C: Booking Fee',
+                    unitNet: bookingFee * monthlyHoursPerCourt,
+                    liaisonShare: shareC,
+                    companyShare: 100 - shareC
+                }
+            };
+
+            // Calculate M1 earnings per model
+            Object.values(models).forEach(m => {
+                m.liaisonM1 = (m1CourtsPerLiaison * m.unitNet) * (m.liaisonShare / 100);
+                m.companyM1 = (m1TotalNetworkCourts * m.unitNet) * (m.companyShare / 100);
+            });
+
+            // Update KPI Cards
+            ['A', 'B', 'C'].forEach(k => {
+                setText(`kpiModel${k}Unit`, formatCurrency(models[k].unitNet));
+                setText(`kpiModel${k}LiaisonM1`, formatCurrency(models[k].liaisonM1));
+                setText(`kpiModel${k}CompanyM1`, formatCurrency(models[k].companyM1));
+            });
+            setText('kpiModelAGMV', formatCurrency(gmvPerCourtMonth));
+            setText('kpiModelCBookings', monthlyHoursPerCourt);
+
+            // Mathematical Anatomy Card (Tab 1)
+            setText('anatVenues', `${startingVenues} ${startingVenues === 1 ? 'venue' : 'venues'}`);
+            setText('anatCourtsPerVenue', `${formatCount(courtsPerVenue)} courts / venue`);
+            setText('anatCourtsPerLiaison', `${formatCount(m1CourtsPerLiaison)} courts`);
+            setText('anatTotalCourts', `${formatCount(m1TotalNetworkCourts)} courts`);
+            setText('anatLiaisonsCountText', `${liaisonCount} liaisons`);
+            setText('anatPerLiaisonCourtsText', `${formatCount(m1CourtsPerLiaison)} courts`);
+            setText('anatCalcFootprint', `${formatCount(m1TotalNetworkCourts)} network courts`);
+
+            setText('anatWeeklyHours', `${hoursPerWeek} hrs/wk`);
+            setText('anatMonthlyHours', `${monthlyHoursPerCourt} hours`);
+            setText('anatTotalNetworkHours', `${monthlyHoursPerCourt * m1TotalNetworkCourts} hours`);
+            setText('anatBookingsCalc', `${monthlyHoursPerCourt} bookings/court`);
+
+            // Step 3 Dynamic Breakdown (DRY Schema)
+            const ANATOMY_BREAKDOWNS = {
+                A: {
+                    title: 'Step 3: Model A Net / Court',
+                    rows: [
+                        ['Hourly Court Rate:', `${currencySymbol()}${formatCurrency(baseRate)}/hr`],
+                        ['Monthly Court GMV:', `${currencySymbol()}${formatCurrency(gmvPerCourtMonth)}`],
+                        ['Gross Commission:', `${grossCommission.toFixed(1)}%`],
+                        ['Gateway Fee:', '-2.0%', 'text-rose-600'],
+                        ['Net Commission Rate:', `${netCommissionPercent.toFixed(1)}%`, 'font-semibold text-indigo-800 pt-1 border-t border-indigo-200']
+                    ]
+                },
+                B: {
+                    title: 'Step 3: Model B Net / Court',
+                    rows: [
+                        ['Court Subscription Fee:', `${currencySymbol()}${formatCurrency(subCost)} / mo`],
+                        ['Gateway Fee Deduction:', '0% (Paid by venue)', 'text-emerald-700'],
+                        ['Revenue Type:', 'Fixed Recurring', 'pt-1 border-t border-indigo-200'],
+                        ['Retained by Platform:', '100% of Fee', 'font-semibold text-indigo-800']
+                    ]
+                },
+                C: {
+                    title: 'Step 3: Model C Net / Court',
+                    rows: [
+                        ['Platform Fee / Booking:', `${currencySymbol()}${formatCurrency(bookingFee)}`],
+                        ['Est. Monthly Bookings:', `${monthlyHoursPerCourt} bookings`],
+                        ['Gateway Fee Deduction:', '0% (Paid by venue)', 'text-emerald-700'],
+                        ['Calculation:', `${monthlyHoursPerCourt} × ${currencySymbol()}${formatCurrency(bookingFee)}`, 'pt-1 border-t border-indigo-200 font-semibold text-indigo-800']
+                    ]
+                }
+            };
+
+            const anat = ANATOMY_BREAKDOWNS[currentAnatomyModel];
+            setText('anatStep3Title', anat.title);
+            $('anatStep3Body').innerHTML = anat.rows.map(([label, val, cls]) => `
+                <div class="flex justify-between ${cls || ''}"><span>${label}</span><strong>${val}</strong></div>
+            `).join('');
+
+            const curModel = models[currentAnatomyModel];
+            setText('anatUnitNetVal', formatCurrency(curModel.unitNet));
+            setText('anatLiaisonSplit', `${curModel.liaisonShare}%`);
+            setText('anatCompanySplit', `${curModel.companyShare}%`);
+            setText('anatLiaisonM1Val', formatCurrency(curModel.liaisonM1));
+            setText('anatCompanyM1Val', formatCurrency(curModel.companyM1));
+            $('anatRealizationNote').innerHTML = `Company = ${formatCount(m1TotalNetworkCourts)} courts × ${currencySymbol()}${formatCurrency(curModel.unitNet * (curModel.companyShare / 100))} = <strong>${currencySymbol()}${formatCurrency(curModel.companyM1)}</strong>.`;
+
+            // Month 1 Comparison Matrix
+            const left = models[$('compareModelLeft').value];
+            const right = models[$('compareModelRight').value];
+
+            [ ['Left', left], ['Right', right] ].forEach(([pos, m]) => {
+                setText(`cmp${pos}Title`, m.name);
+                setText(`cmp${pos}Unit`, formatCurrency(m.unitNet));
+                setText(`cmp${pos}LiaisonM1`, formatCurrency(m.liaisonM1));
+                setText(`cmp${pos}CompanyM1`, formatCurrency(m.companyM1));
+            });
+
+            const deltaUnit = left.unitNet - right.unitNet;
+            const deltaLiaison = left.liaisonM1 - right.liaisonM1;
+            const deltaCompany = left.companyM1 - right.companyM1;
+            const unitGainPercent = right.unitNet > 0 ? Math.round((deltaUnit / right.unitNet) * 100) : 0;
+
+            const badge = $('cmpDeltaBadge');
+            badge.innerText = `${unitGainPercent >= 0 ? '+' : ''}${unitGainPercent}%`;
+            badge.className = `text-[10px] font-bold px-2 py-0.5 rounded-md ${unitGainPercent >= 0 ? 'bg-emerald-600' : 'bg-rose-600'} text-white shadow-2xs`;
+
+            setText('cmpDeltaUnitSign', deltaUnit >= 0 ? '+' : '-');
+            setText('cmpDeltaUnit', formatCurrency(Math.abs(deltaUnit)));
+            setText('cmpDeltaLiaisonSign', deltaLiaison >= 0 ? '+' : '-');
+            setText('cmpDeltaLiaison', formatCurrency(Math.abs(deltaLiaison)));
+            setText('cmpDeltaCompanySign', deltaCompany >= 0 ? '+' : '-');
+            setText('cmpDeltaCompany', formatCurrency(Math.abs(deltaCompany)));
+
+            // Break-Even Utilization
+            let breakEvenHrs = (baseRate > 0 && netCommissionPercent > 0) ? subCost / (baseRate * 4 * (netCommissionPercent / 100)) : 0;
+            const breakEvenTxt = breakEvenHrs > 0 ? `${formatCount(breakEvenHrs)} hrs/wk` : 'N/A';
+            const breakEvenCap = breakEvenHrs > 0 ? Math.round((breakEvenHrs / 112) * 100) : 0;
+            setText('cmpBreakEvenHoursPill', breakEvenTxt);
+            $('cmpBreakEvenText').innerHTML = `Under Model A (${currencySymbol()}${formatCurrency(baseRate)}/hr, ${netCommissionPercent.toFixed(1)}% net commission), courts need <strong>${breakEvenTxt}</strong> of bookings to match Model B's fixed <strong>${currencySymbol()}${formatCurrency(subCost)}/mo</strong> (~${breakEvenCap}% full court capacity).`;
+
+            // Projections 36-Month Engine (DRY Array Generation)
+            const allMonthsData = Array.from({ length: 36 }, (_, m) => {
+                const venues = startingVenues + (venueGrowth * m);
+                const courtsOne = venues * courtsPerVenue;
+                const totalCourts = courtsOne * liaisonCount;
+                return {
+                    monthIndex: m + 1,
+                    venuesOneLiaison: venues,
+                    courtsOneLiaison: courtsOne,
+                    totalNetworkCourts: totalCourts,
+                    aCompany: (totalCourts * models.A.unitNet) * (models.A.companyShare / 100),
+                    aLiaison: (courtsOne * models.A.unitNet) * (models.A.liaisonShare / 100),
+                    bCompany: (totalCourts * models.B.unitNet) * (models.B.companyShare / 100),
+                    bLiaison: (courtsOne * models.B.unitNet) * (models.B.liaisonShare / 100),
+                    cCompany: (totalCourts * models.C.unitNet) * (models.C.companyShare / 100),
+                    cLiaison: (courtsOne * models.C.unitNet) * (models.C.liaisonShare / 100)
+                };
+            });
+
+            const sliced = allMonthsData.slice(horizonStart - 1, horizonEnd);
+            const totals = sliced.reduce((acc, d) => {
+                acc.aCo += d.aCompany; acc.bCo += d.bCompany; acc.cCo += d.cCompany;
+                acc.aLi += d.aLiaison; acc.bLi += d.bLiaison; acc.cLi += d.cLiaison;
+                return acc;
+            }, { aCo: 0, bCo: 0, cCo: 0, aLi: 0, bLi: 0, cLi: 0 });
+
+            // Render Ledger Table (DRY mapping)
+            $('ledgerTableBody').innerHTML = sliced.map(d => {
+                const coDelta = d.bCompany - d.aCompany;
+                const liDelta = d.bLiaison - d.aLiaison;
+                return `
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                        <td class="py-2.5 px-4 font-semibold text-slate-800">Month ${d.monthIndex}</td>
+                        <td class="py-2.5 px-3 text-slate-600">${formatCount(d.totalNetworkCourts)}</td>
+                        <td class="py-2.5 px-3 text-indigo-700 font-semibold">${currencySymbol()}${formatCurrency(d.aCompany)}</td>
+                        <td class="py-2.5 px-3 text-purple-700 font-semibold">${currencySymbol()}${formatCurrency(d.bCompany)}</td>
+                        <td class="py-2.5 px-3 text-emerald-700 font-semibold">${currencySymbol()}${formatCurrency(d.cCompany)}</td>
+                        <td class="py-2.5 px-3 ${coDelta >= 0 ? 'text-emerald-700 font-bold' : 'text-rose-600 font-semibold'}">${coDelta >= 0 ? '+' : ''}${currencySymbol()}${formatCurrency(coDelta)}</td>
+                        <td class="py-2.5 px-3 text-slate-700">${currencySymbol()}${formatCurrency(d.aLiaison)}</td>
+                        <td class="py-2.5 px-3 text-purple-900 font-semibold">${currencySymbol()}${formatCurrency(d.bLiaison)}</td>
+                        <td class="py-2.5 px-3 text-emerald-900 font-semibold">${currencySymbol()}${formatCurrency(d.cLiaison)}</td>
+                        <td class="py-2.5 px-4 ${liDelta >= 0 ? 'text-emerald-700 font-bold' : 'text-rose-600 font-semibold'}">${liDelta >= 0 ? '+' : ''}${currencySymbol()}${formatCurrency(liDelta)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const totCoDelta = totals.bCo - totals.aCo;
+            const totLiDelta = totals.bLi - totals.aLi;
+            $('ledgerTableFoot').innerHTML = `
+                <tr>
+                    <td class="py-3 px-4 uppercase text-[11px] tracking-wider text-slate-600">Horizon Total</td>
+                    <td class="py-3 px-3 text-slate-500">—</td>
+                    <td class="py-3 px-3 text-indigo-900">${currencySymbol()}${formatCurrency(totals.aCo)}</td>
+                    <td class="py-3 px-3 text-purple-900">${currencySymbol()}${formatCurrency(totals.bCo)}</td>
+                    <td class="py-3 px-3 text-emerald-900">${currencySymbol()}${formatCurrency(totals.cCo)}</td>
+                    <td class="py-3 px-3 ${totCoDelta >= 0 ? 'text-emerald-700' : 'text-rose-600'}">${totCoDelta >= 0 ? '+' : ''}${currencySymbol()}${formatCurrency(totCoDelta)}</td>
+                    <td class="py-3 px-3 text-slate-800">${currencySymbol()}${formatCurrency(totals.aLi)}</td>
+                    <td class="py-3 px-3 text-purple-900">${currencySymbol()}${formatCurrency(totals.bLi)}</td>
+                    <td class="py-3 px-3 text-emerald-900">${currencySymbol()}${formatCurrency(totals.cLi)}</td>
+                    <td class="py-3 px-4 ${totLiDelta >= 0 ? 'text-emerald-700' : 'text-rose-600'}">${totLiDelta >= 0 ? '+' : ''}${currencySymbol()}${formatCurrency(totLiDelta)}</td>
+                </tr>
+            `;
+
+            // Horizon Milestones
+            const last = sliced[sliced.length - 1];
+            setText('projEndingFootprint', `${last.venuesOneLiaison} venues (${formatCount(last.courtsOneLiaison)} courts / liaison)`);
+            setText('projEndingNetworkTotal', `${formatCount(last.totalNetworkCourts)} total network courts at Month ${horizonEnd}`);
+            setText('projTotalModelA', formatCurrency(totals.aCo)); setText('projRunRateModelA', formatCurrency(last.aCompany));
+            setText('projTotalModelB', formatCurrency(totals.bCo)); setText('projRunRateModelB', formatCurrency(last.bCompany));
+            setText('projTotalModelC', formatCurrency(totals.cCo)); setText('projRunRateModelC', formatCurrency(last.cCompany));
+            setText('chartRangeSubtitle', `Month ${horizonStart} to Month ${horizonEnd}`);
+
+            if (revenueChart) renderChart(sliced, liaisonCount);
+        }
+
+        // ==============================================================
+        // CHART RENDERING (DRY Dataset Pipeline)
+        // ==============================================================
+        function initChart() {
+            const ctx = $('revenueChart').getContext('2d');
+            revenueChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.94)',
+                            padding: 12, cornerRadius: 10,
+                            callbacks: {
+                                label: ctx => (ctx.dataset.label ? ctx.dataset.label + ': ' : '') + currencySymbol() + formatCurrency(ctx.parsed.y)
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 }, color: '#64748b' } },
+                        y: {
+                            beginAtZero: true, grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [4, 4] },
+                            ticks: { font: { family: 'Inter', size: 11 }, color: '#64748b', callback: v => currencySymbol() + formatCurrency(v) }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderChart(slicedData, liaisonCount) {
+            if (!revenueChart) return;
+            const ctx = $('revenueChart').getContext('2d');
+            const makeGrad = (r, g, b, a1) => {
+                const gr = ctx.createLinearGradient(0, 0, 0, 360);
+                gr.addColorStop(0, `rgba(${r},${g},${b},${a1})`);
+                gr.addColorStop(1, `rgba(${r},${g},${b},0.01)`);
+                return gr;
+            };
+
+            const SERIES_MAP = [
+                { key: 'bCompany', model: 'B', role: 'company', label: `Model B: Subscription Company (${liaisonCount} Liaisons)`, color: '#7c3aed', grad: makeGrad(124, 58, 237, 0.22), fill: true },
+                { key: 'cCompany', model: 'C', role: 'company', label: `Model C: Booking Fee Company (${liaisonCount} Liaisons)`, color: '#0d9488', grad: makeGrad(13, 148, 136, 0.20), fill: true },
+                { key: 'aCompany', model: 'A', role: 'company', label: `Model A: Commission Company (${liaisonCount} Liaisons)`, color: '#4f46e5', grad: makeGrad(79, 70, 229, 0.20), fill: false, dash: [5, 4] },
+                { key: 'bLiaison', model: 'B', role: 'liaison', label: 'Model B: Subscription (1 Liaison Take-Home)', color: '#059669', grad: makeGrad(5, 150, 105, 0.20), fill: true },
+                { key: 'cLiaison', model: 'C', role: 'liaison', label: 'Model C: Booking Fee (1 Liaison Take-Home)', color: '#0d9488', grad: makeGrad(13, 148, 136, 0.20), fill: false },
+                { key: 'aLiaison', model: 'A', role: 'liaison', label: 'Model A: Commission (1 Liaison Take-Home)', color: '#d97706', grad: makeGrad(217, 119, 6, 0.18), fill: false, dash: [5, 4] }
+            ];
+
+            const selectedModels = Array.from(document.querySelectorAll('.compare-model:checked'), el => el.value);
+            const seriesFiltered = SERIES_MAP.filter(s => {
+                if (!selectedModels.includes(s.model)) return false;
+                if (currentChartTab === 'company') return s.role === 'company';
+                if (currentChartTab === 'liaison') return s.role === 'liaison';
+                return true;
+            });
+
+            const datasets = seriesFiltered.map(s => ({
+                label: s.label,
+                borderColor: s.color,
+                backgroundColor: currentChartTab === 'combined' ? 'transparent' : s.grad,
+                borderWidth: s.dash ? 2.5 : 3,
+                borderDash: s.dash || [],
+                pointBackgroundColor: s.color,
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 3.5,
+                tension: 0.32,
+                fill: currentChartTab === 'combined' ? false : s.fill,
+                data: slicedData.map(d => d[s.key])
+            }));
+
+            $('chartLegendContainer').innerHTML = datasets.map(ds => `
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-md inline-block shadow-2xs" style="background-color:${ds.borderColor}"></span>
+                    <span class="text-slate-700">${ds.label}</span>
+                </div>
+            `).join('');
+
+            revenueChart.data.labels = slicedData.map(d => `Month ${d.monthIndex}`);
+            revenueChart.data.datasets = datasets;
+            revenueChart.update();
+        }
+
+        // Configuration & Auth Initialization
+        async function loadServerConfig() {
+            try {
+                const res = await fetch('/api/config');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data?.currencies) serverConfig = data;
+                }
+            } catch (e) {
+                console.log('Running in offline/standalone mode.');
+            }
+        }
+
+        function populateCurrencyDropdown() {
+            const el = $('currencySelect');
+            if (!el || !serverConfig.currencies) return;
+            const cur = el.value || activeCurrency;
+            el.innerHTML = Object.entries(serverConfig.currencies).map(([code, c]) => 
+                `<option value="${code}" ${code === cur ? 'selected' : ''}>${c.name || code}</option>`
+            ).join('');
+        }
+
+        async function checkAuthSession() {
+            try {
+                const res = await fetch('/api/me');
+                if (res.ok) {
+                    const d = await res.json();
+                    if (d.authenticated && d.user) {
+                        $('userProfileBadge').classList.remove('hidden');
+                        setText('userName', d.user.name || 'Authorized User');
+                        setText('userEmail', d.user.email);
+                        setText('userAvatar', (d.user.name || d.user.email).charAt(0).toUpperCase());
+                        return;
+                    }
+                }
+            } catch (e) {
+                $('standaloneBadge').classList.remove('hidden');
+            }
+        }
+
+        window.onload = async function () {
+            await loadServerConfig();
+            populateCurrencyDropdown();
+            initCurrencyState();
+            applyCurrencyConfig(serverConfig.defaultCurrency || 'INR');
+            initChart();
+            checkAuthSession();
+        };
+    </script>
+</body>
+
+</html>
